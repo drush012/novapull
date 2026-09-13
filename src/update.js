@@ -12,11 +12,9 @@ const { t } = require('./i18n');
 // The address shipped with the app, so nobody has to configure anything to be
 // told about a new build. The settings field only overrides it.
 //
-// >>> Fill this in once the repository exists: <<<
-//   https://api.github.com/repos/<owner>/<repo>/releases/latest
-// While it is empty the app simply never checks, which is why the check is
-// written to fail silently rather than complain on every launch.
-const DEFAULT_FEED = '';
+// Empty would mean "never check"; the check fails silently either way, so a
+// release feed that is unreachable never nags anyone on startup.
+const DEFAULT_FEED = 'https://api.github.com/repos/drush012/novapull/releases/latest';
 
 // What the app should actually ask, given whatever the user did or did not type.
 function resolveFeed(configured) {

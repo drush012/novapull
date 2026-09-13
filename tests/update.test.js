@@ -110,3 +110,14 @@ test('留空时用内置地址，填了就用填的', () => {
   assert.equal(resolveFeed('https://example.com/f'), 'https://example.com/f');
   assert.equal(resolveFeed(null), DEFAULT_FEED);
 });
+
+// A typo here would be invisible: the check fails silently by design, so the
+// app would simply never find an update and nobody would notice for months.
+test('内置更新源指向本仓库的 releases 接口', () => {
+  const { DEFAULT_FEED, normalizeFeed } = require('../src/update');
+  assert.ok(DEFAULT_FEED, '内置更新源不应为空');
+  // normalizeFeed is what the app actually runs it through; it rejects
+  // anything that is not https or not a URL at all.
+  assert.doesNotThrow(() => normalizeFeed(DEFAULT_FEED));
+  assert.match(DEFAULT_FEED, /^https:\/\/api\.github\.com\/repos\/[\w.-]+\/[\w.-]+\/releases\/latest$/);
+});
