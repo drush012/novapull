@@ -172,7 +172,7 @@ const DICT = {
     'settings.preview': '实时预览',
 
     'about.title': '关于 NovaPull',
-    'about.engines': '解析与下载内核：yt-dlp，音视频合并：FFmpeg。请只下载你有权保存的内容。',
+    'about.engines': '解析与下载内核：yt-dlp，音视频合并：FFmpeg，YouTube 签名求解：Deno。三者的许可证与确切版本随程序附带（resources/bin），许可说明与源码获取方式见 github.com/drush012/novapull。请只下载你有权保存的内容。',
     'about.body': 'NovaPull v{version}\n内核目录：{dir}（仅使用自带内核）\n默认下载目录：{downloads}',
     'about.preview': 'NovaPull 界面预览',
 
@@ -418,7 +418,7 @@ const DICT = {
     'settings.preview': 'Live preview',
 
     'about.title': 'About NovaPull',
-    'about.engines': 'Parsing and downloading: yt-dlp. Muxing: FFmpeg. Only download what you have the right to keep.',
+    'about.engines': 'Parsing and downloading: yt-dlp. Muxing: FFmpeg. YouTube signature solving: Deno. Their licences and exact versions ship with the program (resources/bin); licensing details and where to get the source are at github.com/drush012/novapull. Only download what you have the right to keep.',
     'about.body': 'NovaPull v{version}\nEngine folder: {dir} (bundled engines only)\nDefault download folder: {downloads}',
     'about.preview': 'NovaPull UI preview',
 

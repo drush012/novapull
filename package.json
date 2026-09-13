@@ -1,6 +1,6 @@
 {
   "name": "novapull",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "A clean Windows video downloader powered by yt-dlp",
   "main": "src/main.js",
   "author": "NovaPull contributors",

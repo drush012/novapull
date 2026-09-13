@@ -86,6 +86,18 @@ Both passes need Deno. YouTube signs every stream URL with an `n` parameter comp
 
 Datacenter IPs are flagged as bots far more readily. If a video only reaches 1080p, switching to a cleaner exit node does more than anything else.
 
+## Privacy
+
+NovaPull has no account system and sends nothing to its authors. It does contact a few outside services, each tied to something the app visibly does:
+
+| Service | When | What it receives |
+|---|---|---|
+| The site a pasted link points to | parsing and downloading | the requests themselves; that site's cookies from the built-in browser are added only when a signed-in pass is needed |
+| `ipapi.co`, falling back to `api.ipify.org` | on startup, to show the current exit IP on the home page | your IP address — which is what they send back |
+| `api.github.com` | the update check: on startup at most once a day (can be switched off in settings), or when you choose *Check for updates* | a request for the latest NovaPull release |
+
+Login cookies are written to your own userData folder and read only by the bundled yt-dlp. The app never uploads them anywhere.
+
 ## Running locally
 
 1. Install Node.js 20 or newer

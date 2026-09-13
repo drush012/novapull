@@ -24,6 +24,18 @@ NovaPull 自身以 MIT 许可证发布，运行时通过独立进程调用以下
 - 本项目 CI 使用官方 `deno-x86_64-pc-windows-msvc.zip`，并校验官方 `.sha256sum`。
 - 随包文件：`resources/bin/DENO-LICENSE.txt`
 
+## 确切版本与对应源码
+
+每个发布的安装包都附带 `resources/bin/BUNDLED-VERSIONS.txt`，由 CI 在构建时直接调用随包的可执行文件生成，记录该安装包里 yt-dlp、FFmpeg / FFprobe、Deno 的**确切版本**。
+
+依据 GPLv3 第 6 条，随包 GPL 组件对应版本的完整源码可按该文件中的版本号从以下位置获取：
+
+- **yt-dlp**：https://github.com/yt-dlp/yt-dlp/releases —— 选择与版本号一致的 tag，其中含该版本的完整源码
+- **FFmpeg**：https://git.ffmpeg.org/ffmpeg.git —— 检出版本号对应的 release 分支或 tag；gyan.dev 的构建配置与所含外部库清单见 https://www.gyan.dev/ffmpeg/builds/
+- **Deno**（MIT，非 GPL，列出以便核对）：https://github.com/denoland/deno/releases
+
+如上述位置无法取得对应源码，可在本仓库提交 issue 索取，我们会在合理期限内提供。
+
 ## 说明
 
 - 这些可执行文件不与 NovaPull 静态链接，而是作为独立进程被调用；NovaPull 本体仍为 MIT。

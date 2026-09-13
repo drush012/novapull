@@ -86,6 +86,30 @@ jobs:
           Invoke-WebRequest https://raw.githubusercontent.com/yt-dlp/yt-dlp/master/LICENSE -OutFile vendor/YT-DLP-LICENSE.txt
           Invoke-WebRequest https://raw.githubusercontent.com/denoland/deno/main/LICENSE.md -OutFile vendor/DENO-LICENSE.txt
           Get-ChildItem vendor
+      # GPLv3 section 6 obliges whoever distributes these binaries to point at
+      # the corresponding source for the exact version shipped. The versions are
+      # read from the binaries themselves, so the record cannot drift from what
+      # is in the package; THIRD_PARTY_NOTICES.md says where each source lives.
+      # Must run before the build, or extraResources ships without it.
+      - name: Record bundled versions
+        shell: pwsh
+        run: |
+          $lines = @(
+            '# Exact versions of the third-party executables bundled in this build.',
+            '# The corresponding source for each is listed in THIRD_PARTY_NOTICES.md.',
+            '',
+            ('yt-dlp   ' + ((& vendor/yt-dlp.exe --version) | Select-Object -First 1)),
+            ('ffmpeg   ' + ((& vendor/ffmpeg.exe -version) | Select-Object -First 1)),
+            ('ffprobe  ' + ((& vendor/ffprobe.exe -version) | Select-Object -First 1)),
+            ('deno     ' + ((& vendor/deno.exe --version) | Select-Object -First 1))
+          )
+          foreach ($line in $lines[3..6]) {
+            $parts = $line.Split([char[]]' ', [System.StringSplitOptions]::RemoveEmptyEntries)
+            if ($parts.Count -lt 2) { throw "有一行没取到版本：[$line]" }
+          }
+          $lines | Set-Content -Encoding utf8 vendor/BUNDLED-VERSIONS.txt
+          Get-Content vendor/BUNDLED-VERSIONS.txt
+
       - name: Build
         run: npm run dist
 
@@ -108,9 +132,12 @@ jobs:
             Write-Host "$($file.Name)  $mb MB"
           }
 
+      # The release body is what the in-app update dialog shows, so it comes
+      # from a file in the repository rather than being left empty.
       - uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/')
         with:
+          body_path: RELEASE_NOTES.md
           files: |
             NovaPull-*.exe
             dist/NovaPull-*.blockmap

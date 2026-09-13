@@ -83,3 +83,41 @@ test('下载沿用解析时的方式：未登录解析出来的任务，下载�
   const renderer = fs.readFileSync(path.join(__dirname, '..', 'src', 'renderer.js'), 'utf8');
   assert.match(renderer, /ytAnonymous:\s*Boolean\(info\.ytAnonymous\)/, '渲染层建任务时必须把解析方式带过去');
 });
+
+// The in-app update dialog shows the release body, and 1.1.0 went out with an
+// empty one. The notes have to exist, be wired into the release step, and be
+// written for the version actually being built — a bumped version carrying the
+// previous release's notes would tell users about the wrong changes.
+// Deliberately free of regular expressions: backslashes in this file have
+// already been mangled once on their way through a shell.
+test('发布说明存在、接入发布步骤，且标题对应 package.json 的版本', () => {
+  const root = path.join(__dirname, '..');
+  const workflow = fs.readFileSync(path.join(root, '.github', 'workflows', 'build.yml'), 'utf8');
+  assert.ok(workflow.includes('body_path: RELEASE_NOTES.md'), '发布步骤没有接上 RELEASE_NOTES.md');
+
+  const notes = fs.readFileSync(path.join(root, 'RELEASE_NOTES.md'), 'utf8');
+  const { version } = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
+  const heading = notes.split(String.fromCharCode(10))[0].trim();
+  assert.ok(heading.split(' ').includes(version), `RELEASE_NOTES.md 的标题应当写 ${version}，现在是：${heading}`);
+});
+
+// GPLv3 section 6 obliges whoever distributes the FFmpeg and yt-dlp binaries to
+// point at the corresponding source for the exact version shipped. CI reads the
+// versions from the binaries themselves; the notices must say where that record
+// is and where the matching source lives.
+test('安装包记录内核确切版本，许可声明指向对应源码', () => {
+  const root = path.join(__dirname, '..');
+  const workflow = fs.readFileSync(path.join(root, '.github', 'workflows', 'build.yml'), 'utf8');
+  assert.ok(workflow.includes('vendor/BUNDLED-VERSIONS.txt'), 'CI 没有生成 BUNDLED-VERSIONS.txt');
+  for (const tool of ['yt-dlp.exe', 'ffmpeg.exe', 'ffprobe.exe', 'deno.exe']) {
+    assert.ok(workflow.includes('& vendor/' + tool + ' '), 'CI 没有记录 ' + tool + ' 的版本');
+  }
+  // Written after the build step, it would never reach the package.
+  assert.ok(workflow.indexOf('vendor/BUNDLED-VERSIONS.txt') < workflow.indexOf('run: npm run dist'), '版本记录必须在打包之前生成');
+
+  const notices = fs.readFileSync(path.join(root, 'THIRD_PARTY_NOTICES.md'), 'utf8');
+  assert.ok(notices.includes('BUNDLED-VERSIONS.txt'), '许可声明没有提到版本记录文件');
+  for (const source of ['github.com/yt-dlp/yt-dlp', 'git.ffmpeg.org/ffmpeg.git']) {
+    assert.ok(notices.includes(source), '许可声明缺少源码地址：' + source);
+  }
+});
