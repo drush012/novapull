@@ -45,9 +45,13 @@ jobs:
           Invoke-WebRequest "$base/deno-x86_64-pc-windows-msvc.zip" -OutFile deno.zip
           Invoke-WebRequest "$base/deno-x86_64-pc-windows-msvc.zip.sha256sum" -OutFile deno.sha256
           # Deno publishes the checksum in PowerShell's Get-FileHash layout
-          # ("Hash : <value>"), not the usual "<hash>  <file>" line.
-          $expected = ((Select-String -Path deno.sha256 -Pattern '^Hashs*:s*([0-9A-Fa-f]+)').Matches[0].Groups[1].Value).ToLower()
-          if (-not $expected) { throw 'Deno 校验文件里找不到哈希值' }
+          # ("Hash      : <value>"), not the usual "<hash>  <file>" line.
+          # Matched with a wildcard rather than a regex: backslashes in a YAML
+          # scalar are one more thing to get wrong, and this needs none.
+          $line = Get-Content deno.sha256 | Where-Object { $_.Trim() -like 'Hash*:*' } | Select-Object -First 1
+          if (-not $line) { throw "Deno 校验文件格式不认识：`n$(Get-Content deno.sha256 -Raw)" }
+          $expected = ($line -split ':', 2)[1].Trim().ToLower()
+          if ($expected.Length -ne 64) { throw "Deno 哈希值长度不对（$($expected.Length)）：$expected" }
           $actual = (Get-FileHash deno.zip -Algorithm SHA256).Hash.ToLower()
           if ($expected -ne $actual) { throw "deno.zip 校验失败：期望 $expected，实际 $actual" }
           Write-Host "deno.zip SHA256 verified: $actual"
