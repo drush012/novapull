@@ -67,24 +67,24 @@ Measured on one machine through one exit IP, **fully anonymous, with no cookies 
 | Bilibili | yes | 1080p30 (higher tiers need an account) | none |
 | TikTok | yes | source resolution | avoided |
 | X / Twitter | yes | source resolution | none |
-| YouTube | **no** | see below | none |
+| YouTube | depends on exit IP — see below | 4320p AV1 HDR | none |
 
 A note on "watermark removal": Douyin and TikTok both offer a watermarked download alongside a clean playback stream, and the app picks the clean one. A watermark the **uploader** burned into the picture is part of the video itself and no downloader can remove it.
 
-### YouTube needs two things
+### YouTube
 
-Neither one alone is enough:
+YouTube is the one site where the exit IP decides the outcome, so the app parses it in two passes:
 
-| Requirement | Without it |
-|---|---|
-| Login cookies | `Sign in to confirm you're not a bot` — not even the quality list comes back |
-| Deno (a JS engine) | `n challenge solving failed` → `The page needs to be reloaded` |
+1. **Signed out first.** On a clean exit this reaches the full ladder — 4320p AV1 HDR, measured. The clients that serve 4K/8K refuse cookies, so this pass deliberately sends none.
+2. **Signed in, only when YouTube asks for it.** On a flagged exit the first pass is refused with `Sign in to confirm you're not a bot`; the second pass brings the login cookies from the built-in browser and typically reaches 1080p60.
 
-YouTube signs every stream URL with an `n` parameter computed by its own player script. yt-dlp has no JavaScript engine of its own, so one has to be supplied; without solving that parameter, downloads are throttled to a few tens of KB/s.
+Whichever pass the parse used, the download repeats — a format found signed out may not exist in a signed-in request.
 
-With both in place the full ladder is available (4320p AV1 HDR, measured). Deno is an **optional** dependency: missing it degrades YouTube only, and every other site keeps working.
+Counter-intuitively, cookies make a clean exit *worse*: on the same video through the same exit, signed out reached 4320p while signed in stopped at 1080p60.
 
-Datacenter IPs are flagged as bots far more readily. If signing in still does not help, changing the exit node usually does more than anything else.
+Both passes need Deno. YouTube signs every stream URL with an `n` parameter computed by its own player script; yt-dlp has no JavaScript engine of its own, and without one it fails with `n challenge solving failed`. Deno is an **optional** dependency — missing it affects YouTube only.
+
+Datacenter IPs are flagged as bots far more readily. If a video only reaches 1080p, switching to a cleaner exit node does more than anything else.
 
 ## Running locally
 

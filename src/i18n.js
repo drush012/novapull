@@ -117,7 +117,7 @@ const DICT = {
     'status.initFailed': '初始化失败',
     'status.preview': '界面预览 · 请打开 EXE',
 
-    'home.title': '视频解析下载 · 自动去水印',
+    'home.title': '视频解析下载',
     'home.subtitle': '支持抖音、哔哩哔哩、YouTube、小红书、TikTok、Instagram、X 等主流平台',
     'home.placeholder': '粘贴视频链接或整段分享文案，回车即可解析',
     'home.parse': '解析',
@@ -363,7 +363,7 @@ const DICT = {
     'status.initFailed': 'Startup failed',
     'status.preview': 'UI preview · open the EXE',
 
-    'home.title': 'Parse and download · watermark-free',
+    'home.title': 'Parse and download',
     'home.subtitle': 'Works with Douyin, Bilibili, YouTube, RED, TikTok, Instagram, X and other major platforms',
     'home.placeholder': 'Paste a video link, or the whole share text — press Enter to parse',
     'home.parse': 'Parse',

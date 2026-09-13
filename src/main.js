@@ -166,6 +166,33 @@ function jsRuntimeArgs() {
   return deno ? ['--js-runtimes', `deno:${deno}`] : [];
 }
 
+const YOUTUBE_HOSTS = /(^|\.)(youtube\.com|youtu\.be|youtube-nocookie\.com)$/i;
+
+function isYouTube(href) {
+  try { return YOUTUBE_HOSTS.test(new URL(href).hostname); } catch { return false; }
+}
+
+// YouTube is parsed in two passes, and each needs its own client list.
+//
+// Signed out: the clients that carry the full DASH ladder (up to 8K) refuse
+// cookies, so this is the only pass able to reach them. "default" is yt-dlp's
+// own set, which includes them; web_safari rides along so a session that has
+// SABR forced on web still gets 1080p HLS rather than 360p.
+//
+// Signed in: those clients are skipped, and some accounts have SABR forced on
+// web, so web_safari leads and web follows.
+//
+// Measured on one video through a clean exit: signed out reached 4320p AV1,
+// signed in stopped at 1080p60. Through a flagged exit, signed out is refused
+// outright and the signed-in pass is the one that works.
+const YT_CLIENTS_SIGNED_OUT = 'default,web_safari';
+const YT_CLIENTS_SIGNED_IN = 'web_safari,web';
+
+// The "youtube:" namespace scopes this to the YouTube extractor alone.
+function youtubeClientArgs(anonymous) {
+  return ['--extractor-args', `youtube:player_client=${anonymous ? YT_CLIENTS_SIGNED_OUT : YT_CLIENTS_SIGNED_IN}`];
+}
+
 function bundledTool(name) {
   const file = resolveTool(name);
   if (!file) {
@@ -469,6 +496,17 @@ ipcMain.handle('inspect-url', async (_event, payload) => {
   }
 
   try {
+    // YouTube goes signed out first. On a clean exit that is the only pass able
+    // to reach the 4K/8K clients, which refuse cookies — sending the login would
+    // lock them out and leave 1080p HLS. Only when YouTube asks for a sign-in
+    // does the second pass bring the cookies.
+    if (isYouTube(url)) {
+      try {
+        return { ...(await inspectWithYtDlp(url, request, { anonymous: true })), ytAnonymous: true };
+      } catch (anonymousError) {
+        if (!anonymousError.needsLogin) throw anonymousError;
+      }
+    }
     return await inspectWithYtDlp(url, request);
   } catch (error) {
     // yt-dlp cannot sign Douyin's web API (and similar); fall back to watching
@@ -492,8 +530,9 @@ ipcMain.handle('inspect-url', async (_event, payload) => {
   }
 });
 
-const inspectWithYtDlp = (url, request) => new Promise((resolve, reject) => {
-  const child = spawn(bundledTool('yt-dlp'), ['--ignore-config', ...cookieArgs(request), ...jsRuntimeArgs(), '--dump-single-json', '--no-playlist', '--no-warnings', '--socket-timeout', '20', '--', url], { windowsHide: true });
+const inspectWithYtDlp = (url, request, { anonymous = false } = {}) => new Promise((resolve, reject) => {
+  const cookies = anonymous ? [] : cookieArgs(request);
+  const child = spawn(bundledTool('yt-dlp'), ['--ignore-config', ...cookies, ...jsRuntimeArgs(), ...youtubeClientArgs(anonymous), '--dump-single-json', '--no-playlist', '--no-warnings', '--socket-timeout', '20', '--', url], { windowsHide: true });
   parsers.add(child);
   const timeout = setTimeout(() => { child.kill(); reject(new Error(t('err.parseTimeout'))); }, 90000);
   let stdout = '';
@@ -569,7 +608,9 @@ ipcMain.handle('start-download', async (event, task) => {
   const outputDir = validateOutputDir(task.outputDir);
   fs.mkdirSync(outputDir, { recursive: true });
   const args = [
-    '--ignore-config', ...cookieArgs(task), ...jsRuntimeArgs(),
+    // A YouTube task parsed signed out is downloaded signed out as well: the
+    // format it picked may exist only on clients that refuse cookies.
+    '--ignore-config', ...(task.ytAnonymous ? [] : cookieArgs(task)), ...jsRuntimeArgs(), ...youtubeClientArgs(Boolean(task.ytAnonymous)),
     '--no-playlist', '--newline', '--no-colors', '--progress', '--socket-timeout', '20',
     '--progress-template', 'download:%(progress._percent_str)s|%(progress._speed_str)s|%(progress._eta_str)s|%(progress._total_bytes_str)s',
     '--concurrent-fragments', String(Math.min(Math.max(Number(task.fragments) || 8, 1), 64)),

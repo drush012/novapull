@@ -206,6 +206,8 @@ function createParser(refs, hooks = {}) {
         audioOnly: el('type').value === 'audio', formatId: el('format').value,
         size: chosen?.size || 0,
         viaSniffer: Boolean(info.viaSniffer), viaPageProbe: Boolean(info.viaPageProbe),
+        // Which YouTube pass the parse used; the download has to repeat it.
+        ytAnonymous: Boolean(info.ytAnonymous),
         status: 'waiting', progress: 0, speed: '', eta: '--:--', error: '', warning: '', filePath: ''
       };
       Object.assign(task, cookieOptions());
