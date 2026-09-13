@@ -88,9 +88,36 @@ jobs:
           Get-ChildItem vendor
       - name: Build
         run: npm run dist
+
+      # npm run dist moves the finished installers to the repository root and
+      # leaves only intermediates in dist/. Publishing whatever a glob happens
+      # to match is how a release ends up containing nothing but a blockmap, so
+      # the expected files are checked by name before anything is uploaded.
+      - name: Verify artifacts
+        shell: pwsh
+        run: |
+          $installers = Get-ChildItem -Path . -Filter 'NovaPull-*.exe' -File
+          if ($installers.Count -lt 2) {
+            Get-ChildItem -Path . -Filter 'NovaPull-*' | Format-Table Name, Length
+            Get-ChildItem -Path dist -Filter 'NovaPull-*' | Format-Table Name, Length
+            throw "期望 2 个安装包（portable + setup），实际找到 $($installers.Count) 个"
+          }
+          foreach ($file in $installers) {
+            $mb = [math]::Round($file.Length / 1MB, 1)
+            if ($mb -lt 50) { throw "$($file.Name) 只有 $mb MB，内核多半没打进去" }
+            Write-Host "$($file.Name)  $mb MB"
+          }
+
       - uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/')
-        with: { files: 'dist/NovaPull-*' }
+        with:
+          files: |
+            NovaPull-*.exe
+            dist/NovaPull-*.blockmap
       - uses: actions/upload-artifact@v4
         if: ${{ !startsWith(github.ref, 'refs/tags/') }}
-        with: { name: NovaPull-Windows, path: 'dist/NovaPull-*' }
+        with:
+          name: NovaPull-Windows
+          path: |
+            NovaPull-*.exe
+            dist/NovaPull-*.blockmap
