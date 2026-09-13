@@ -1,142 +1,147 @@
 # NovaPull
 
-一款面向 Windows 的视频下载器。Electron 外壳，`yt-dlp` 负责解析与下载，FFmpeg 合并音视频，Deno 为 yt-dlp 提供 JavaScript 引擎。界面是经典桌面下载器布局：菜单栏、图标工具栏、左侧分类栏、任务表格与状态栏。
+A video downloader for Windows. Electron shell, `yt-dlp` for parsing and downloading, FFmpeg for muxing, Deno as the JavaScript engine yt-dlp needs. The interface is a classic desktop download manager: menu bar, icon toolbar, category sidebar, task table and status bar.
 
-内核全部随包自带，**不会调用系统上另外安装的同名程序** —— 实际运行的版本取决于这个构建，而不是取决于机器。
+Every engine ships with the app and **the system's own copies are never called** — what runs depends on this build, not on the machine it lands on.
 
-## 功能
+[**Download the latest release →**](https://github.com/drush012/novapull/releases/latest)
 
-**主界面**
+## Features
 
-- 首页直接粘贴链接解析，结果**就地展开**，不弹窗
-- 常用站点 12 个入口，点击在内置浏览器中打开
-- 显示当前下载出口 IP —— 这是 YouTube 之类的站点是否搭理你的首要因素
-- 任务表格：名称、大小、状态、进度、速度、剩余时间，支持多选
-- 左侧按状态（全部／正在下载／已完成／失败）和类型（视频／音乐）筛选
+**Main window**
 
-**解析与下载**
+- Paste a link on the home page and the result opens **in place** — no dialog
+- Twelve site shortcuts, each opening in the built-in browser
+- Shows the current download exit IP, which is the single biggest factor in whether a site like YouTube answers at all
+- Task table: name, size, status, progress, speed, time left, multi-select
+- Sidebar filters by status (all / downloading / completed / failed) and type (video / music)
 
-- 粘贴纯链接，或整段「中文标题＋链接」的分享文案，自动提取网址
-- 画质按 **8K / 4K / 2K / 1080P** 这样的档位命名，而不是原始高度数字；按分辨率优先排序
-- 仅音频下载（转 mp3）
-- 停止后保留断点，可继续 / 重试
-- 所选画质不可用时明确提示已降级，不静默更换
+**Parsing and downloading**
 
-**三条解析路径**，按站点自动选择：
+- Accepts a bare link, or a whole "title + link" share blurb with the URL buried in it
+- Quality levels are named **8K / 4K / 2K / 1080P** rather than by raw pixel height, and sorted by resolution first
+- Audio-only downloads (converted to mp3)
+- Stopping keeps the partial file; resume and retry both work
+- When the chosen quality is unavailable it says so instead of silently substituting another
 
-| 路径 | 用在哪 | 做什么 |
+**Three parsing routes**, chosen automatically per site:
+
+| Route | Used for | What it does |
 |---|---|---|
-| yt-dlp | 绝大多数站点 | 常规解析 |
-| 播放器探测 | 抖音 | 读页面播放器自己的画质表，拿到 4K/8K 且**无水印**（yt-dlp 走的 `download_addr` 是 720p 带水印的） |
-| 媒体嗅探 | 前两条都失败时 | 用内置浏览器加载页面，抓它实际播放的流 |
+| yt-dlp | most sites | normal extraction |
+| Player probe | Douyin | reads the quality table the page's own player holds, which yields 4K/8K **without the watermark** — yt-dlp falls back to `download_addr`, which is 720p with the watermark burned in |
+| Media sniffer | when both fail | loads the page in the built-in browser and captures the stream it actually plays |
 
-嗅探是兜底，只能拿到播放器当前在播的那一路，界面会明说这一点，不会把它当成最高画质。
+The sniffer is a fallback and can only reach whatever the player is currently streaming. The app says so plainly rather than presenting it as the best available quality.
 
-**其他**
+**Also**
 
-- 中文 / English 即时切换，**主进程的报错信息也跟着切**
-- 浅色 / 深色主题，连系统标题栏按钮一起变
-- 检查更新：启动时静默检查（每天至多一次），发现新版本弹窗提示，可跳过某个版本
-- 文件命名规则引擎（当前界面中隐藏，默认规则照常生效）
+- Instant switching between English and 简体中文 — **including errors raised in the main process**
+- Light and dark themes, applied to the native window buttons as well
+- Update check: silent on startup (at most once a day), with a prompt when a newer release exists and a way to skip a version
+- A filename template engine (currently hidden in the UI; the default rule still applies)
 
-## Cookie 与登录
+## Cookies and signing in
 
-解析链接时，软件会先在后台访问一次目标站点取得**匿名 Cookie**，多数站点到此为止，用户什么都不用做。
+Before parsing, the app visits the target site once in the background to pick up its **anonymous cookies**. For most sites that is the end of it and the user does nothing.
 
-需要登录的内容（会员画质、年龄限制，以及被判定为机器人时），在首页「常用站点」里点开对应站点登录一次即可：
+For content that needs an account — member-only quality, age restrictions, or a bot check — open that site once from "Popular sites" on the home page and sign in:
 
-1. 打开的是一个独立的 Electron 会话分区（`persist:novapull-login`），页面没有 preload、没有 Node 权限
-2. 登录页是站点自己的页面，**密码不经过本程序**
-3. 关窗后主进程通过 `session.cookies.get()` 读取该分区，写成 Netscape 格式的 `login-cookies.txt`（在 userData 目录），解析和下载时以 `--cookies` 传给 yt-dlp
-4. 「下载 → 清除站点 Cookie」会清空该分区并删除该文件
+1. It opens in a separate Electron session partition (`persist:novapull-login`) with no preload and no Node access
+2. The sign-in page is the site's own; **no password passes through this program**
+3. On close, the main process reads that partition through `session.cookies.get()` and writes `login-cookies.txt` in Netscape format into the userData folder, which is then handed to yt-dlp as `--cookies`
+4. "Download → Clear site cookies" wipes the partition and deletes that file
 
-> `login-cookies.txt` 等同于登录凭据，**请勿随软件一起分发**。它只保存在本机。
+> `login-cookies.txt` is equivalent to your credentials. **Do not ship it alongside the app.** It never leaves the machine on its own.
 
-## 各站点实测
+## Tested sites
 
-在同一台机器、同一出口 IP 下测得，**完全匿名，不带任何 Cookie**：
+Measured on one machine through one exit IP, **fully anonymous, with no cookies at all**:
 
-| 站点 | 匿名可解析 | 画质上限 |
-|---|---|---|
-| 抖音 | 是 | 4K / 8K，无水印 |
-| Vimeo | 是 | 4K |
-| 哔哩哔哩 | 是 | 1080p30（更高档位属于登录／大会员） |
-| X / 推特 | 是 | 随视频源 |
-| YouTube | **否** | 见下 |
+| Site | Works anonymously | Best quality reached | Platform watermark |
+|---|---|---|---|
+| Douyin | yes | 4K / 8K | avoided |
+| Vimeo | yes | 4K | none |
+| Facebook | yes | 1080p AV1 | none |
+| Instagram | yes | 1080×1920 | none |
+| Bilibili | yes | 1080p30 (higher tiers need an account) | none |
+| TikTok | yes | source resolution | avoided |
+| X / Twitter | yes | source resolution | none |
+| YouTube | **no** | see below | none |
 
-其余站点（TikTok、Instagram、Facebook、快手、微博、小红书、Twitch）尚未逐一实测。
+A note on "watermark removal": Douyin and TikTok both offer a watermarked download alongside a clean playback stream, and the app picks the clean one. A watermark the **uploader** burned into the picture is part of the video itself and no downloader can remove it.
 
-### YouTube 需要两个条件
+### YouTube needs two things
 
-缺一不可：
+Neither one alone is enough:
 
-| 条件 | 缺了会怎样 |
+| Requirement | Without it |
 |---|---|
-| 登录 Cookie | `Sign in to confirm you're not a bot`，连画质表都拿不到 |
-| Deno（JS 引擎） | `n challenge solving failed` → `The page needs to be reloaded` |
+| Login cookies | `Sign in to confirm you're not a bot` — not even the quality list comes back |
+| Deno (a JS engine) | `n challenge solving failed` → `The page needs to be reloaded` |
 
-YouTube 给每个流地址都签了一个 `n` 参数，由它自己的播放器脚本计算。yt-dlp 不带 JS 引擎，所以要外挂一个；不解开这个参数，下载速度会被限制到几十 KB/s。
+YouTube signs every stream URL with an `n` parameter computed by its own player script. yt-dlp has no JavaScript engine of its own, so one has to be supplied; without solving that parameter, downloads are throttled to a few tens of KB/s.
 
-两个都满足时可以拿到完整档位（实测 4320p AV1 HDR）。Deno 是**可选**依赖：缺了只影响 YouTube，其他站点照常。
+With both in place the full ladder is available (4320p AV1 HDR, measured). Deno is an **optional** dependency: missing it degrades YouTube only, and every other site keeps working.
 
-机房 IP 更容易被判定为机器人。如果登录后仍然受阻，换一个出口节点通常比什么都有效。
+Datacenter IPs are flagged as bots far more readily. If signing in still does not help, changing the exit node usually does more than anything else.
 
-## 本地运行
+## Running locally
 
-1. 安装 Node.js 20 或更高版本
-2. 按 [`vendor/README.md`](vendor/README.md) 把内核放进 `vendor/`
-3. 执行：
+1. Install Node.js 20 or newer
+2. Put the engines into `vendor/` as described in [`vendor/README.md`](vendor/README.md)
+3. Then:
 
 ```powershell
 npm install
 npm start
 ```
 
-仅预览界面（不需要内核）：
+To preview the interface only, with no engines needed:
 
 ```powershell
 node scripts/preview-server.js
 ```
 
-然后打开 http://127.0.0.1:8765 。
+then open http://127.0.0.1:8765 .
 
-## 测试
+## Tests
 
 ```powershell
 npm run check
 npm test
 ```
 
-测试覆盖分享文案解析、画质命名、文件命名规则、播放器探测、更新检查、词典完整性等。其中几条是**防回归**的：词典里中英词条必须一一对应且占位符一致；控制流不得依赖翻译后的文本；JS 引擎参数必须同时挂在解析和下载两条路径上。
+Coverage includes share-blurb parsing, quality naming, the filename template engine, the player probe, update checking and dictionary completeness. Several tests exist to prevent specific regressions: the English and Chinese dictionaries must stay key-for-key identical with matching placeholders; control flow must never branch on translated text; and the JS runtime flag must be attached to both the parse and the download paths.
 
-## 图标
+## Icon
 
-`assets/icon.ico` 由代码生成，不是手工维护的二进制：
+`assets/icon.ico` is generated from code rather than kept as a hand-maintained binary:
 
 ```powershell
 npm run icon
 ```
 
-[`scripts/make-icon.js`](scripts/make-icon.js) 用纯 Node 绘制并手写 PNG / ICO 封装，零依赖，一个文件里打包 256/128/64/48/32/16 六档。改配色或形状只需改几个常量后重跑。
+[`scripts/make-icon.js`](scripts/make-icon.js) draws it with plain arithmetic and writes the PNG and ICO containers by hand — no dependencies — packing 256/128/64/48/32/16 into one file. Changing the colours or the shape means editing a few constants and rerunning it.
 
-## 打包
+## Packaging
 
 ```powershell
 npm run dist
 ```
 
-产物在 `dist/`，同时生成 NSIS 安装版和免安装版。
+Produces both an NSIS installer and a portable build, and moves the finished installers to the repository root.
 
-CI（[`.github/workflows/build.yml`](.github/workflows/build.yml)）会自动下载 yt-dlp、FFmpeg、Deno，**逐个校验上游发布的哈希值**，并把它们的许可证一并放进安装包。推送 `v` 开头的 tag 会自动创建 Release 并上传产物。
+CI ([`.github/workflows/build.yml`](.github/workflows/build.yml)) downloads yt-dlp, FFmpeg and Deno, **verifies each against the checksum its upstream publishes**, bundles their licences, and checks the built installers exist and are of a plausible size before publishing anything. Pushing a `v`-prefixed tag creates the release and uploads the artifacts.
 
-发布前请阅读 [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md)。
+Read [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) before distributing.
 
-> 当前未配置代码签名，用户首次运行会遇到 SmartScreen 提示。
+> There is no code signing, so first-run SmartScreen warnings are expected.
 
-## 合规提示
+## Legal
 
-只下载你有权保存的内容，遵守目标站点条款与当地法律。本项目不包含绕过 DRM 的功能。
+Download only what you have the right to keep, and respect the terms of the sites you use and the law where you are. This project contains nothing for circumventing DRM.
 
-## 许可
+## Licence
 
-MIT，见 [`LICENSE`](LICENSE)。随包的第三方可执行文件有各自的许可证，详见 `THIRD_PARTY_NOTICES.md`。
+MIT — see [`LICENSE`](LICENSE). The bundled third-party executables carry their own licences; see `THIRD_PARTY_NOTICES.md`.
