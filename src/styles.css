@@ -1,0 +1,319 @@
+/* Every surface colour is a token so the dark palette below can swap the whole
+   window without any rule having to know which theme is showing. */
+:root {
+  color-scheme: light;
+  --bg: #ffffff;
+  --chrome: #f6f7f9;
+  --surface: #ffffff;
+  --surface-soft: #fcfcfd;
+  --hover: #f1f3f5;
+  --row-hover: #f7f9fc;
+  --track: #e6e8eb;
+  --line: #dcdfe4;
+  --line-soft: #eceef1;
+  --text: #1f2328;
+  --text-soft: #3c4450;
+  --muted: #6b7280;
+  --disabled: #b6bcc4;
+  --accent: #1a73e8;
+  --accent-soft: #e8f0fe;
+  --accent-line: #cfe0fb;
+  --accent-hover: #1765cc;
+  --accent-active: #14539f;
+  --scrim: #1f232833;
+  --ok: #1e9e52;
+  --warn: #b26a00;
+  --err: #d93025;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #16191d;
+  --chrome: #1b1f24;
+  --surface: #1f242a;
+  --surface-soft: #23282f;
+  --hover: #2a3038;
+  --row-hover: #232a32;
+  --track: #333a44;
+  --line: #343b45;
+  --line-soft: #282e36;
+  --text: #e6e9ee;
+  --text-soft: #c4cad3;
+  --muted: #939cab;
+  --disabled: #5b636e;
+  --accent: #4c9aff;
+  --accent-soft: #1c3350;
+  --accent-line: #2f4c78;
+  --accent-hover: #63a9ff;
+  --accent-active: #7cb8ff;
+  --scrim: #00000080;
+  --ok: #45c07a;
+  --warn: #d8a23a;
+  --err: #f0675c;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0;
+  font: 13px/1.5 "Segoe UI", "Microsoft YaHei", sans-serif;
+  color: var(--text);
+  background: var(--bg);
+  overflow: hidden;
+  display: grid;
+  grid-template-rows: 38px 26px auto 1fr 24px;
+}
+button, input, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+.sprite { display: none; }
+.ic { width: 20px; height: 20px; flex: none; }
+.hidden { display: none !important; }
+
+/* ---------- title bar ---------- */
+.titlebar {
+  -webkit-app-region: drag;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+  background: var(--chrome);
+  border-bottom: 1px solid var(--line);
+}
+.app-mark {
+  width: 20px; height: 20px; border-radius: 5px;
+  display: grid; place-items: center;
+  background: linear-gradient(145deg, #35a0ff, #1558c4);
+  color: #fff; font-weight: 800; font-size: 12px;
+}
+.app-name { font-weight: 600; }
+.app-sub { color: var(--muted); font-size: 12px; }
+
+/* ---------- menu bar ---------- */
+.menubar { display: flex; align-items: stretch; background: var(--bg); border-bottom: 1px solid var(--line-soft); padding: 0 4px; }
+.menu { position: relative; display: flex; }
+.menu-btn { border: 0; background: transparent; padding: 0 10px; font-size: 12.5px; }
+.menu-btn:hover, .menu-btn.open { background: var(--accent-soft); color: var(--accent); }
+.menu-pop {
+  position: absolute; top: 100%; left: 0; z-index: 40; min-width: 172px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 6px;
+  box-shadow: 0 10px 28px #0000002e; padding: 4px; display: grid;
+}
+.menu-pop button { border: 0; background: transparent; text-align: left; padding: 7px 10px; border-radius: 4px; font-size: 12.5px; }
+.menu-pop button:hover:not(:disabled) { background: var(--accent-soft); color: var(--accent); }
+.menu-pop button:disabled { color: var(--disabled); cursor: default; }
+.menu-sep { height: 1px; background: var(--line-soft); margin: 4px 2px; }
+
+/* ---------- toolbar ---------- */
+.toolbar { display: flex; align-items: center; gap: 2px; padding: 6px 8px; background: var(--bg); border-bottom: 1px solid var(--line); }
+.tool {
+  border: 1px solid transparent; background: transparent; border-radius: 6px;
+  display: grid; justify-items: center; gap: 2px; padding: 5px 10px 4px;
+  min-width: 62px; font-size: 12px; color: var(--text);
+}
+.tool:hover:not(:disabled) { background: var(--accent-soft); border-color: var(--accent-line); }
+.tool:disabled { opacity: .4; cursor: default; }
+.tool-sep { width: 1px; align-self: stretch; background: var(--line-soft); margin: 4px 6px; }
+/* Same rounded-chip vocabulary as the field labels on the home page. */
+.pref {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 999px;
+  padding: 5px 13px 5px 11px; margin-right: 14px;
+  color: var(--text); font-size: 12px; font-weight: 600;
+}
+.pref-group { position: relative; display: flex; margin-right: 14px; }
+/* Nothing follows the last chip now, so it keeps only the toolbar’s own inset. */
+.toolbar > .pref:last-child { margin-right: 4px; }
+.pref-group .pref { margin-right: 0; }
+/* Anchored to the chip's right edge so a longer language name grows inwards
+   instead of off the window. */
+.pref-group .menu-pop { left: auto; right: 0; min-width: 132px; margin-top: 4px; }
+.pref:hover { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
+.pref .ic { width: 15px; height: 15px; color: var(--accent); }
+.pref:hover .ic { color: var(--accent); }
+
+/* ---------- body ---------- */
+.body { display: grid; grid-template-columns: 168px 1fr; min-height: 0; }
+aside { border-right: 1px solid var(--line); padding: 8px 6px; overflow: auto; background: var(--bg); }
+.side-title { color: var(--muted); font-size: 11.5px; padding: 10px 10px 5px; }
+.nav {
+  width: 100%; display: flex; align-items: center; gap: 9px;
+  border: 0; background: transparent; border-radius: 5px;
+  padding: 7px 10px; text-align: left; color: var(--text-soft);
+}
+.nav .ic { width: 16px; height: 16px; color: var(--muted); }
+.nav:hover { background: var(--hover); }
+.nav.active { background: var(--accent-soft); color: var(--accent); }
+.nav.active .ic { color: var(--accent); }
+
+.list { min-width: 0; min-height: 0; overflow: auto; position: relative; }
+.grid { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.c-check { width: 40px; } .c-size { width: 92px; } .c-state { width: 96px; }
+.c-progress { width: 150px; } .c-speed { width: 100px; } .c-eta { width: 96px; }
+.grid th {
+  position: sticky; top: 0; z-index: 5;
+  background: var(--chrome); border-bottom: 1px solid var(--line); border-right: 1px solid var(--line-soft);
+  font-weight: 600; font-size: 12.5px; padding: 7px 10px; text-align: center;
+}
+.grid th.left { text-align: left; }
+.grid td { border-bottom: 1px solid var(--line-soft); padding: 7px 10px; vertical-align: middle; }
+.grid td.center { text-align: center; }
+.grid tbody tr:hover { background: var(--row-hover); }
+.grid tbody tr.selected { background: var(--accent-soft); }
+.name { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.row-note { font-size: 11.5px; margin-top: 3px; overflow-wrap: anywhere; }
+.row-note.error { color: var(--err); }
+.row-note.warn { color: var(--warn); }
+.state-completed { color: var(--ok); }
+.state-error { color: var(--err); }
+.state-downloading { color: var(--accent); }
+.bar { height: 6px; border-radius: 99px; background: var(--track); overflow: hidden; }
+.bar i { display: block; height: 100%; background: var(--accent); transition: width .25s; }
+tr.done .bar i { background: var(--ok); }
+tr.failed .bar i { background: var(--err); }
+.pct { font-size: 11.5px; color: var(--muted); }
+.muted { color: var(--muted); }
+/* Fills the whole task area so the site tiles can sit against the bottom. */
+.empty { position: absolute; inset: 44px 0 0; color: var(--muted); padding: 0 20px 18px; display: flex; overflow: auto; }
+.empty-panel { max-width: 780px; margin: 0 auto; width: 100%; display: flex; flex-direction: column; }
+/* Title and paste box sit just under the column headers; the site tiles keep
+   the bottom edge, and the slack between them grows with the window. */
+.focus-group { flex: 1; display: flex; flex-direction: column; justify-content: flex-start; padding-top: 26px; }
+.hero { text-align: center; margin-bottom: 22px; }
+.hero h2 { margin: 0 0 6px; font-size: 22px; font-weight: 700; color: var(--text); letter-spacing: .5px; }
+.hero p { margin: 0; font-size: 12.5px; color: var(--muted); }
+.quick-row { display: flex; gap: 8px; }
+.quick-row input { flex: 1; min-width: 0; border: 1px solid var(--line); border-radius: 8px; padding: 11px 13px; outline: none; font: inherit; color: var(--text); background: var(--surface); }
+.quick-row input:focus { border-color: var(--accent); }
+/* The parse result lands here, in the space the task list will take over, so
+   the home page never has to open a dialog on top of itself. */
+.result { margin-top: 12px; }
+.result-state { margin-top: 0; margin-bottom: 10px; }
+.result-body { border: 1px solid var(--line); border-radius: 10px; background: var(--surface-soft); padding: 14px; }
+.result-head { display: flex; gap: 12px; align-items: flex-start; }
+.result-head img { width: 132px; height: 78px; object-fit: cover; border-radius: 6px; background: var(--track); flex: none; }
+.result-title { flex: 1; min-width: 0; }
+.result-title h3 { margin: 2px 0 5px; font-size: 14px; color: var(--text); line-height: 1.4; }
+.result-title p { margin: 0; font-size: 12px; color: var(--muted); }
+.result-form { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 14px; }
+.result-field.wide { grid-column: 1 / -1; }
+/* Field names read as white rounded chips rather than plain grey captions, so
+   each control announces itself against the card's tinted background. */
+.result-field label {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 999px;
+  padding: 5px 13px 5px 11px; margin-bottom: 8px;
+  color: var(--text); font-size: 12px; font-weight: 600;
+  box-shadow: 0 1px 2px #1f232810;
+}
+.result-field label .ic { width: 15px; height: 15px; color: var(--accent); }
+.result-field select { width: 100%; }
+.result-dir { display: flex; gap: 8px; }
+.result-dir input { flex: 1; min-width: 0; border: 1px solid var(--line); background: var(--surface); border-radius: 6px; padding: 8px 10px; outline: none; color: var(--muted); }
+.exit-line { font-size: 12px; white-space: nowrap; }
+.exit-line span { color: var(--text); font-weight: 600; }
+.foot-row { display: flex; justify-content: space-between; align-items: center; gap: 18px; margin: 14px 2px 0; }
+.linklike { border: 0; background: transparent; color: var(--accent); font-size: 12px; padding: 0 4px; }
+.linklike:hover { text-decoration: underline; }
+.empty-panel h4 { margin: 22px 2px 10px; font-size: 12px; color: var(--muted); font-weight: 600; }
+.site-tiles { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; }
+.site-tiles button { border: 0; background: var(--accent); border-radius: 8px; padding: 11px 12px; text-align: center; font-size: 13px; font-weight: 600; color: #fff; }
+.site-tiles button:hover { background: var(--accent-hover); }
+.site-tiles button:active { background: var(--accent-active); }
+.site-tiles button:disabled { opacity: .55; cursor: default; }
+.site-tiles small { display: block; color: #dbe7fb; font-size: 11px; margin-top: 2px; }
+.tiny { font-size: 11.5px; color: var(--muted); }
+
+/* ---------- status bar ---------- */
+.statusbar { display: flex; align-items: center; gap: 18px; padding: 0 12px; background: var(--chrome); border-top: 1px solid var(--line); color: var(--muted); font-size: 12px; }
+.grow { flex: 1; }
+
+/* ---------- modals ---------- */
+.modal { position: fixed; inset: 0; z-index: 60; background: var(--scrim); display: grid; place-items: center; padding: 20px; }
+.modal-card { width: min(580px, 100%); background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 20px; box-shadow: 0 24px 60px #0000003d; }
+.modal-card.narrow { width: min(420px, 100%); }
+.modal-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+.modal-head h2 { font-size: 16px; margin: 0; }
+.icon-btn { border: 0; background: transparent; font-size: 20px; line-height: 1; color: var(--muted); padding: 0 4px; }
+.modal-card label { display: block; color: var(--muted); font-size: 12px; margin: 14px 0 6px; }
+.url-row { display: flex; gap: 8px; }
+.url-row input, select { min-width: 0; flex: 1; border: 1px solid var(--line); background: var(--surface); border-radius: 6px; padding: 8px 10px; outline: none; }
+.url-row input:focus, select:focus { border-color: var(--accent); }
+.primary, .secondary { border-radius: 6px; padding: 8px 15px; font-weight: 600; border: 1px solid transparent; }
+.primary { background: var(--accent); color: #fff; }
+.primary:hover:not(:disabled) { background: var(--accent-hover); }
+.primary:disabled { opacity: .45; cursor: not-allowed; }
+.secondary { background: var(--surface); border-color: var(--line); }
+.secondary:hover { background: var(--hover); }
+.parse-state { margin-top: 10px; color: var(--accent); font-size: 12px; }
+.parse-state.is-error { color: var(--err); }
+.media-preview { margin-top: 14px; background: var(--surface-soft); border: 1px solid var(--line-soft); padding: 10px; border-radius: 8px; display: flex; gap: 12px; align-items: center; }
+.media-preview img { width: 108px; height: 65px; object-fit: cover; border-radius: 6px; background: var(--track); }
+.media-preview h3 { margin: 0 0 4px; font-size: 13.5px; }
+.media-preview p { margin: 0; color: var(--muted); font-size: 12px; }
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.form-grid select { width: 100%; }
+.hint { color: var(--muted); font-size: 12px; margin: 14px 0 0; white-space: pre-line; }
+.modal-card.wide { width: min(720px, 100%); max-height: 88vh; overflow: auto; }
+.card { border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; margin-bottom: 14px; background: var(--surface-soft); }
+.card-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 14px; }
+.card-head h3 { margin: 0 0 3px; font-size: 15px; }
+.card-head p { margin: 0; color: var(--muted); font-size: 12px; }
+.card-actions { display: flex; gap: 8px; flex: none; }
+.card h4 { margin: 16px 0 8px; font-size: 12px; color: var(--muted); font-weight: 600; }
+.field { width: 100%; border: 1px solid var(--line); background: var(--surface); border-radius: 8px; padding: 11px 13px; outline: none; font: inherit; color: var(--text); }
+input.field:focus { border-color: var(--accent); }
+.field.muted { color: var(--muted); background: var(--surface-soft); }
+.field.preview { display: flex; align-items: center; gap: 2px; flex-wrap: wrap; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chips button { border: 1px solid var(--line); background: var(--surface); border-radius: 8px; padding: 7px 11px; display: grid; gap: 1px; text-align: left; }
+.chips button:hover { border-color: var(--accent); background: var(--accent-soft); }
+.chips.presets small { font-family: Consolas, "Courier New", monospace; font-size: 10.5px; }
+.chips button.on { border-color: var(--accent); background: var(--accent-soft); }
+.chips button.on b { color: var(--accent); }
+.preview-note { margin: 8px 2px 0; font-size: 11.5px; color: var(--muted); }
+.chips b { font-weight: 600; font-size: 12.5px; }
+.chips small { color: var(--muted); font-size: 11px; }
+.tok { padding: 2px 8px; border-radius: 6px; font-size: 12px; }
+.tok-platform { background: #e4f6ea; color: #1e7a42; }
+.tok-user_name, .tok-content { background: #fdf0dd; color: #9a5f06; }
+.tok-link_id, .tok-index { background: #e9edfb; color: #33489c; }
+.tok-date_published, .tok-current_time { background: #f0e9fb; color: #5c3a9e; }
+.tok-ext { color: var(--accent); font-size: 12px; }
+.tok-sep { color: var(--muted); font-size: 12px; }
+.row-note { white-space: pre-line; }
+.modal-actions { margin-top: 20px; display: flex; justify-content: flex-end; gap: 8px; }
+
+@media (max-width: 900px) { .body { grid-template-columns: 132px 1fr; } .tool span { display: none; } .tool { min-width: 40px; } }
+
+/* ---------- dark-only touch-ups ---------- */
+/* The pastel token chips and the destructive button are the only places that
+   pick their own colours; in dark they need the pairing inverted. */
+:root[data-theme="dark"] .tok-platform { background: #17402a; color: #79dba3; }
+:root[data-theme="dark"] .tok-user_name,
+:root[data-theme="dark"] .tok-content { background: #45330f; color: #f0c479; }
+:root[data-theme="dark"] .tok-link_id,
+:root[data-theme="dark"] .tok-index { background: #222c52; color: #a7b6f5; }
+:root[data-theme="dark"] .tok-date_published,
+:root[data-theme="dark"] .tok-current_time { background: #33244f; color: #c4a9f2; }
+:root[data-theme="dark"] .app-mark { background: linear-gradient(145deg, #4fb0ff, #2a6fd8); }
+:root[data-theme="dark"] .menu-pop { box-shadow: 0 10px 28px #00000070; }
+:root[data-theme="dark"] .modal-card { box-shadow: 0 24px 60px #00000080; }
+:root[data-theme="dark"] .result-field label { box-shadow: none; }
+:root[data-theme="dark"] .site-tiles small { color: #cfe0fb; }
+
+/* ---------- update ---------- */
+/* A quiet chip rather than a dialog on launch: it says a build exists without
+   standing between the user and the thing they opened the app to do. */
+.pref.badge { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+.pref.badge .ic { color: var(--accent); }
+.pref.badge:hover { background: var(--accent); color: #fff; }
+.pref.badge:hover .ic { color: #fff; }
+.kv { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; margin: 14px 0 0; font-size: 12.5px; }
+.kv dt { color: var(--muted); }
+.kv dd { margin: 0; overflow-wrap: anywhere; }
+.notes {
+  margin: 14px 0 0; padding: 10px 12px; max-height: 220px; overflow: auto;
+  background: var(--surface-soft); border: 1px solid var(--line-soft); border-radius: 8px;
+  font: 12px/1.6 Consolas, "Courier New", monospace; white-space: pre-wrap; overflow-wrap: anywhere;
+}
+.check { display: flex; align-items: center; gap: 8px; margin-top: 12px; color: var(--text); font-size: 12.5px; }
+.check input { margin: 0; }

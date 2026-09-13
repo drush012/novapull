@@ -1,0 +1,298 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' https: data:; style-src 'self'; script-src 'self'">
+  <title>NovaPull</title>
+  <link rel="stylesheet" href="styles.css">
+  <!-- Stamps the saved theme on <html> before the body paints, so switching to
+       dark does not flash a white window on every start. -->
+  <script src="theme-boot.js"></script>
+</head>
+<body>
+  <svg class="sprite" aria-hidden="true">
+    <symbol id="ic-add" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="#2aa745"/><path d="M12 7v10M7 12h10" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/></symbol>
+    <symbol id="ic-resume" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="#1a73e8"/><path d="M10 8.2l6 3.8-6 3.8z" fill="#fff"/></symbol>
+    <symbol id="ic-stop" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="#f0a028"/><path d="M10 8v8M14 8v8" stroke="#fff" stroke-width="2.2" stroke-linecap="round"/></symbol>
+    <symbol id="ic-stopall" viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="20" rx="5" fill="#e0392b"/><rect x="8" y="8" width="8" height="8" rx="1.2" fill="#fff"/></symbol>
+    <symbol id="ic-delete" viewBox="0 0 24 24"><path d="M9 3h6l1 2h4v2H4V5h4z" fill="#e0392b"/><path d="M6 8h12l-1 12a1.6 1.6 0 01-1.6 1.5H8.6A1.6 1.6 0 017 20z" fill="#e0392b"/><path d="M10 11v7M14 11v7" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/></symbol>
+    <symbol id="ic-folder" viewBox="0 0 24 24"><path d="M3 6.5A1.5 1.5 0 014.5 5H9l2 2.2h8.5A1.5 1.5 0 0121 8.7V18a1.5 1.5 0 01-1.5 1.5h-15A1.5 1.5 0 013 18z" fill="#f2b23c"/><path d="M3.6 10h17.2l-1.5 8.2a1.5 1.5 0 01-1.5 1.3H5.2a1.5 1.5 0 01-1.5-1.3z" fill="#ffd479"/></symbol>
+    <symbol id="ic-options" viewBox="0 0 24 24"><path d="M12 8.6A3.4 3.4 0 1012 15.4 3.4 3.4 0 0012 8.6zm0 2.1a1.3 1.3 0 110 2.6 1.3 1.3 0 010-2.6z" fill="#6b7280"/><path d="M10.6 2.6h2.8l.4 2.5 2 .9 2.1-1.4 2 2-1.4 2.1.9 2 2.5.4v2.8l-2.5.4-.9 2 1.4 2.1-2 2-2.1-1.4-2 .9-.4 2.5h-2.8l-.4-2.5-2-.9-2.1 1.4-2-2 1.4-2.1-.9-2-2.5-.4v-2.8l2.5-.4.9-2L4.1 6.6l2-2 2.1 1.4 2-.9z" fill="none" stroke="#6b7280" stroke-width="1.6" stroke-linejoin="round"/></symbol>
+    <symbol id="ic-all" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+    <symbol id="ic-down" viewBox="0 0 24 24"><path d="M12 4v12m0 0l-4.5-4.5M12 16l4.5-4.5M4.5 20h15" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="ic-done" viewBox="0 0 24 24"><path d="M4.5 12.5l5 5 10-11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/></symbol>
+    <symbol id="ic-fail" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" stroke="currentColor" stroke-width="1.7" fill="none"/><path d="M12 7.5v6M12 16.2v.6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+    <symbol id="ic-video" viewBox="0 0 24 24"><rect x="3" y="6" width="13" height="12" rx="2" stroke="currentColor" stroke-width="1.7" fill="none"/><path d="M16 11l5-3v8l-5-3z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" fill="none"/></symbol>
+    <symbol id="ic-audio" viewBox="0 0 24 24"><path d="M9 17V6l10-2v11" stroke="currentColor" stroke-width="1.7" fill="none" stroke-linejoin="round"/><circle cx="6.5" cy="17.5" r="2.5" stroke="currentColor" stroke-width="1.7" fill="none"/><circle cx="16.5" cy="15.5" r="2.5" stroke="currentColor" stroke-width="1.7" fill="none"/></symbol>
+    <symbol id="ic-quality" viewBox="0 0 24 24"><rect x="2.5" y="5" width="19" height="14" rx="2.4" stroke="currentColor" stroke-width="1.7" fill="none"/><path d="M7 9.5v5M7 12h2.6M9.6 9.5v5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M13.4 9.5v5h1.8a2 2 0 002-2v-1a2 2 0 00-2-2z" stroke="currentColor" stroke-width="1.7" fill="none" stroke-linejoin="round"/></symbol>
+    <symbol id="ic-save" viewBox="0 0 24 24"><path d="M3 6.5A1.5 1.5 0 014.5 5H9l2 2.2h8.5A1.5 1.5 0 0121 8.7V18a1.5 1.5 0 01-1.5 1.5h-15A1.5 1.5 0 013 18z" stroke="currentColor" stroke-width="1.7" fill="none" stroke-linejoin="round"/></symbol>
+    <symbol id="ic-update" viewBox="0 0 24 24"><path d="M12 3.6v9.2m0 0l-3.4-3.4M12 12.8l3.4-3.4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M4.2 15.4v2.6a2 2 0 002 2h11.6a2 2 0 002-2v-2.6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" fill="none"/></symbol>
+    <symbol id="ic-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" stroke="currentColor" stroke-width="1.7" fill="none"/><path d="M3.5 12h17M12 3.5c2.3 2.4 3.4 5.3 3.4 8.5s-1.1 6.1-3.4 8.5c-2.3-2.4-3.4-5.3-3.4-8.5S9.7 5.9 12 3.5z" stroke="currentColor" stroke-width="1.7" fill="none"/></symbol>
+    <symbol id="ic-moon" viewBox="0 0 24 24"><path d="M20 14.2A8.2 8.2 0 019.8 4 8.4 8.4 0 1020 14.2z" stroke="currentColor" stroke-width="1.7" fill="none" stroke-linejoin="round"/></symbol>
+    <symbol id="ic-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.1" stroke="currentColor" stroke-width="1.7" fill="none"/><path d="M12 2.6v2.5M12 18.9v2.5M2.6 12h2.5M18.9 12h2.5M5.4 5.4l1.8 1.8M16.8 16.8l1.8 1.8M18.6 5.4l-1.8 1.8M7.2 16.8l-1.8 1.8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></symbol>
+  </svg>
+
+  <div class="titlebar">
+    <span class="app-mark">N</span>
+    <span class="app-name">NovaPull</span>
+    <span class="app-sub" id="titleVersion"></span>
+  </div>
+
+  <div class="menubar" id="menubar">
+    <div class="menu">
+      <button class="menu-btn" data-menu="task" data-i18n="menu.task"></button>
+      <div class="menu-pop hidden" data-pop="task">
+        <button data-action="add" data-i18n="menu.task.add"></button>
+        <button data-action="resume" data-i18n="menu.task.resume"></button>
+        <button data-action="stop" data-i18n="menu.task.stop"></button>
+        <div class="menu-sep"></div>
+        <button data-action="remove" data-i18n="menu.task.remove"></button>
+      </div>
+    </div>
+    <div class="menu">
+      <button class="menu-btn" data-menu="file" data-i18n="menu.file"></button>
+      <div class="menu-pop hidden" data-pop="file">
+        <button data-action="open-folder" data-i18n="menu.file.openFolder"></button>
+        <div class="menu-sep"></div>
+        <button data-action="quit" data-i18n="menu.file.quit"></button>
+      </div>
+    </div>
+    <div class="menu">
+      <button class="menu-btn" data-menu="download" data-i18n="menu.download"></button>
+      <div class="menu-pop hidden" data-pop="download">
+        <button data-action="stop-all" data-i18n="menu.download.stopAll"></button>
+        <button data-action="resume-all" data-i18n="menu.download.resumeAll"></button>
+        <div class="menu-sep"></div>
+        <button data-action="clear-cookies" data-i18n="menu.download.clearCookies"></button>
+        <button data-action="options" data-i18n="menu.download.options"></button>
+      </div>
+    </div>
+    <div class="menu">
+      <button class="menu-btn" data-menu="view" data-i18n="menu.view"></button>
+      <div class="menu-pop hidden" data-pop="view">
+        <button data-action="filter" data-filter="all" data-i18n="filter.allShort"></button>
+        <button data-action="filter" data-filter="downloading" data-i18n="filter.downloading"></button>
+        <button data-action="filter" data-filter="completed" data-i18n="filter.completed"></button>
+        <button data-action="filter" data-filter="error" data-i18n="filter.error"></button>
+      </div>
+    </div>
+    <div class="menu">
+      <button class="menu-btn" data-menu="help" data-i18n="menu.help"></button>
+      <div class="menu-pop hidden" data-pop="help">
+        <button data-action="update" data-i18n="menu.help.update"></button>
+        <div class="menu-sep"></div>
+        <button data-action="about" data-i18n="menu.help.about"></button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toolbar">
+    <button class="tool" id="tbAdd"><svg class="ic"><use href="#ic-add"></use></svg><span data-i18n="tool.add"></span></button>
+    <button class="tool" id="tbResume" disabled><svg class="ic"><use href="#ic-resume"></use></svg><span data-i18n="tool.resume"></span></button>
+    <button class="tool" id="tbStop" disabled><svg class="ic"><use href="#ic-stop"></use></svg><span data-i18n="tool.stop"></span></button>
+    <button class="tool" id="tbStopAll"><svg class="ic"><use href="#ic-stopall"></use></svg><span data-i18n="tool.stopAll"></span></button>
+    <button class="tool" id="tbRemove" disabled><svg class="ic"><use href="#ic-delete"></use></svg><span data-i18n="tool.remove"></span></button>
+    <button class="tool" id="tbOpenFolder" disabled><svg class="ic"><use href="#ic-folder"></use></svg><span data-i18n="tool.openFolder"></span></button>
+    <div class="tool-sep"></div>
+    <button class="tool" id="tbOptions"><svg class="ic"><use href="#ic-options"></use></svg><span data-i18n="tool.options"></span></button>
+
+    <div class="grow"></div>
+    <button class="pref badge hidden" id="btnUpdate">
+      <svg class="ic"><use href="#ic-update"></use></svg><span data-i18n="update.badge"></span>
+    </button>
+    <div class="pref-group">
+      <button class="pref" id="btnLang">
+        <svg class="ic"><use href="#ic-globe"></use></svg><span id="langName"></span>
+      </button>
+      <div class="menu-pop hidden" id="langMenu"></div>
+    </div>
+    <button class="pref" id="btnTheme">
+      <svg class="ic"><use id="themeIcon" href="#ic-sun"></use></svg><span id="themeName"></span>
+    </button>
+  </div>
+
+  <div class="body">
+    <aside>
+      <div class="side-title" data-i18n="side.category"></div>
+      <button class="nav active" data-filter="all"><svg class="ic"><use href="#ic-all"></use></svg><span data-i18n="filter.all"></span></button>
+      <button class="nav" data-filter="downloading"><svg class="ic"><use href="#ic-down"></use></svg><span data-i18n="filter.downloading"></span></button>
+      <button class="nav" data-filter="completed"><svg class="ic"><use href="#ic-done"></use></svg><span data-i18n="filter.completed"></span></button>
+      <button class="nav" data-filter="error"><svg class="ic"><use href="#ic-fail"></use></svg><span data-i18n="filter.error"></span></button>
+      <div class="side-title" data-i18n="side.kind"></div>
+      <button class="nav" data-filter="kind:video"><svg class="ic"><use href="#ic-video"></use></svg><span data-i18n="filter.video"></span></button>
+      <button class="nav" data-filter="kind:audio"><svg class="ic"><use href="#ic-audio"></use></svg><span data-i18n="filter.audio"></span></button>
+    </aside>
+
+    <section class="list">
+      <table class="grid">
+        <colgroup><col class="c-check"><col class="c-name"><col class="c-size"><col class="c-state"><col class="c-progress"><col class="c-speed"><col class="c-eta"></colgroup>
+        <thead>
+          <tr>
+            <th><input type="checkbox" id="selectAll"></th>
+            <th class="left" data-i18n="grid.name"></th>
+            <th class="left" data-i18n="grid.size"></th>
+            <th class="left" data-i18n="grid.state"></th>
+            <th class="left" data-i18n="grid.progress"></th>
+            <th class="left" data-i18n="grid.speed"></th>
+            <th class="left" data-i18n="grid.eta"></th>
+          </tr>
+        </thead>
+        <tbody id="taskRows"></tbody>
+      </table>
+      <div class="empty hidden" id="emptyHint">
+        <div class="empty-panel">
+          <div class="focus-group">
+            <div class="hero">
+              <h2 data-i18n="home.title"></h2>
+              <p data-i18n="home.subtitle"></p>
+            </div>
+            <div class="quick-row">
+              <input id="quickUrl" data-i18n-placeholder="home.placeholder" spellcheck="false" autocomplete="off">
+              <button class="primary" id="quickParse" data-i18n="home.parse"></button>
+            </div>
+
+            <div class="result">
+              <div class="parse-state result-state hidden" id="quickState"></div>
+              <div class="result-body hidden" id="quickBody">
+                <div class="result-head">
+                  <img id="quickThumb" alt="">
+                  <div class="result-title">
+                    <h3 id="quickTitle"></h3>
+                    <p id="quickMeta"></p>
+                  </div>
+                  <button class="icon-btn" id="quickClear" data-i18n-title="home.clear">×</button>
+                </div>
+                <div class="result-form">
+                  <div class="result-field">
+                    <label for="quickType"><svg class="ic"><use href="#ic-video"></use></svg><span data-i18n="field.type"></span></label>
+                    <select id="quickType"><option value="video" data-i18n="type.video"></option><option value="audio" data-i18n="type.audio"></option></select>
+                  </div>
+                  <div class="result-field">
+                    <label for="quickFormat"><svg class="ic"><use href="#ic-quality"></use></svg><span data-i18n="field.quality"></span></label>
+                    <select id="quickFormat"><option value="" data-i18n="quality.auto"></option></select>
+                  </div>
+                  <div class="result-field wide">
+                    <label for="quickDir"><svg class="ic"><use href="#ic-save"></use></svg><span data-i18n="field.saveTo"></span></label>
+                    <div class="result-dir">
+                      <input id="quickDir" readonly data-i18n-placeholder="add.dirPlaceholder">
+                      <button class="secondary" id="quickFolder" data-i18n="action.choose"></button>
+                      <button class="primary" id="quickDownload" disabled data-i18n="action.start"></button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="sites-block">
+            <h4 data-i18n="home.sites"></h4>
+            <div class="site-tiles" id="siteTiles"></div>
+            <div class="foot-row">
+              <span class="tiny" data-i18n="home.sitesNote"></span>
+              <span class="exit-line">
+                <span data-i18n="home.exit"></span> <span id="exitIp"></span>
+                <button class="linklike" id="refreshIp" data-i18n="home.refresh"></button>
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <div class="statusbar">
+    <span id="taskCount"></span>
+    <span id="totalSpeed"></span>
+    <span class="grow"></span>
+    <span id="engineState"></span>
+  </div>
+
+  <div class="modal hidden" id="taskModal">
+    <div class="modal-card">
+      <div class="modal-head"><h2 data-i18n="add.title"></h2><button class="icon-btn" data-close>×</button></div>
+      <label data-i18n="add.url"></label>
+      <div class="url-row"><input id="urlInput" data-i18n-placeholder="add.urlPlaceholder"><button class="primary" id="parseBtn" data-i18n="add.parse"></button></div>
+      <div id="parseState" class="parse-state hidden"></div>
+      <div id="mediaPreview" class="media-preview hidden"><img id="thumb" alt=""><div><h3 id="mediaTitle"></h3><p id="mediaMeta"></p></div></div>
+      <div class="form-grid">
+        <div><label data-i18n="field.type"></label><select id="downloadType"><option value="video" data-i18n="type.video"></option><option value="audio" data-i18n="type.audio"></option></select></div>
+        <div><label data-i18n="field.quality"></label><select id="formatSelect"><option value="" data-i18n="quality.best"></option></select></div>
+      </div>
+      <label data-i18n="field.saveTo"></label>
+      <div class="url-row"><input id="outputDir" readonly data-i18n-placeholder="add.dirPlaceholder"><button class="secondary" id="folderBtn" data-i18n="action.choose"></button></div>
+      <div class="modal-actions"><button class="secondary" data-close data-i18n="action.cancel"></button><button class="primary" id="downloadBtn" disabled data-i18n="action.start"></button></div>
+    </div>
+  </div>
+
+  <div class="modal hidden" id="settingsModal">
+    <div class="modal-card wide">
+      <div class="modal-head"><h2 data-i18n="settings.title"></h2><button class="icon-btn" data-close-settings>×</button></div>
+
+      <section class="card">
+        <div class="card-head">
+          <div><h3 data-i18n="settings.dir"></h3><p data-i18n="settings.dirNote"></p></div>
+          <div class="card-actions"><button class="secondary" id="settingsPick" data-i18n="action.choose"></button><button class="secondary" id="settingsOpenDir" data-i18n="settings.openFolder"></button></div>
+        </div>
+        <div class="field" id="settingsOutputDir"></div>
+      </section>
+
+      <!-- Hidden from the dialog, still fully wired: the default rule keeps
+           naming every download. Drop the "hidden" class to show it again. -->
+      <section class="card hidden" id="namingCard">
+        <div class="card-head">
+          <div><h3 data-i18n="settings.naming"></h3><p data-i18n="settings.namingNote"></p></div>
+          <div class="card-actions"><button class="secondary" id="templateReset" data-i18n="settings.reset"></button></div>
+        </div>
+        <h4 data-i18n="settings.presets"></h4>
+        <div class="chips presets" id="templatePresets"></div>
+        <input class="field" id="templateInput" spellcheck="false" autocomplete="off">
+        <h4 data-i18n="settings.vars"></h4>
+        <div class="chips" id="templateVars"></div>
+        <h4 data-i18n="settings.preview"></h4>
+        <div class="field preview" id="templatePreview"></div>
+        <div class="field muted" id="templatePath"></div>
+        <p class="preview-note" id="templateSparse"></p>
+      </section>
+
+      <section class="card">
+        <div class="card-head">
+          <div><h3 data-i18n="settings.update"></h3><p data-i18n="settings.updateNote"></p></div>
+          <div class="card-actions"><button class="secondary" id="settingsCheckUpdate" data-i18n="update.recheck"></button></div>
+        </div>
+        <input class="field" id="updateFeed" spellcheck="false" autocomplete="off" placeholder="https://api.github.com/repos/OWNER/REPO/releases/latest">
+        <label class="check"><input type="checkbox" id="autoUpdate"><span data-i18n="settings.autoUpdate"></span></label>
+      </section>
+
+      <div class="modal-actions"><button class="primary" id="settingsSave" data-i18n="action.save"></button></div>
+    </div>
+  </div>
+
+  <div class="modal hidden" id="updateModal">
+    <div class="modal-card narrow">
+      <div class="modal-head"><h2 data-i18n="update.title"></h2><button class="icon-btn" data-close-update>×</button></div>
+      <p class="parse-state" id="updateState"></p>
+      <dl class="kv" id="updateFacts"></dl>
+      <pre class="notes hidden" id="updateNotes"></pre>
+      <div class="modal-actions">
+        <button class="secondary hidden" id="updateSkip" data-i18n="update.skip"></button>
+        <button class="secondary" id="updateRecheck" data-i18n="update.recheck"></button>
+        <button class="primary hidden" id="updateOpen" data-i18n="update.open"></button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal hidden" id="aboutModal">
+    <div class="modal-card narrow">
+      <div class="modal-head"><h2 data-i18n="about.title"></h2><button class="icon-btn" data-close-about>×</button></div>
+      <p class="hint" id="aboutBody"></p>
+      <p class="hint" data-i18n="about.engines"></p>
+      <div class="modal-actions"><button class="primary" data-close-about data-i18n="action.close"></button></div>
+    </div>
+  </div>
+
+  <script src="i18n.js"></script>
+  <script src="share-url.js"></script>
+  <script src="renderer.js"></script>
+</body>
+</html>

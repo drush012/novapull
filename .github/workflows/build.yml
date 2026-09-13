@@ -1,0 +1,92 @@
+name: Build Windows
+on:
+  workflow_dispatch:
+    inputs:
+      ytdlp_version:
+        description: 'yt-dlp 版本号（留空则使用 latest）'
+        required: false
+        default: ''
+  push:
+    tags: ['v*']
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - name: Install dependencies
+        run: npm ci
+      - name: Run tests
+        run: npm test
+      - name: Download and verify yt-dlp
+        shell: pwsh
+        run: |
+          $version = '${{ github.event.inputs.ytdlp_version }}'
+          $base = if ($version) { "https://github.com/yt-dlp/yt-dlp/releases/download/$version" } else { 'https://github.com/yt-dlp/yt-dlp/releases/latest/download' }
+          New-Item -ItemType Directory -Force vendor | Out-Null
+          Invoke-WebRequest "$base/yt-dlp.exe" -OutFile vendor/yt-dlp.exe
+          Invoke-WebRequest "$base/SHA2-256SUMS" -OutFile ytdlp-sums.txt
+          $line = Select-String -Path ytdlp-sums.txt -Pattern '\syt-dlp\.exe$' | Select-Object -First 1
+          if (-not $line) { throw 'SHA2-256SUMS 中找不到 yt-dlp.exe 条目' }
+          $expected = $line.Line.Split(' ')[0].Trim().ToLower()
+          $actual = (Get-FileHash vendor/yt-dlp.exe -Algorithm SHA256).Hash.ToLower()
+          if ($expected -ne $actual) { throw "yt-dlp.exe 校验失败：期望 $expected，实际 $actual" }
+          Write-Host "yt-dlp.exe SHA256 verified: $actual"
+      - name: Download and verify Deno
+        shell: pwsh
+        run: |
+          # yt-dlp needs a JS engine to solve YouTube's "n" challenge; without it
+          # YouTube parsing fails outright. Every other site is unaffected.
+          $version = 'v2.9.6'
+          $base = "https://github.com/denoland/deno/releases/download/$version"
+          Invoke-WebRequest "$base/deno-x86_64-pc-windows-msvc.zip" -OutFile deno.zip
+          Invoke-WebRequest "$base/deno-x86_64-pc-windows-msvc.zip.sha256sum" -OutFile deno.sha256
+          # Deno publishes the checksum in PowerShell's Get-FileHash layout
+          # ("Hash : <value>"), not the usual "<hash>  <file>" line.
+          $expected = ((Select-String -Path deno.sha256 -Pattern '^Hashs*:s*([0-9A-Fa-f]+)').Matches[0].Groups[1].Value).ToLower()
+          if (-not $expected) { throw 'Deno 校验文件里找不到哈希值' }
+          $actual = (Get-FileHash deno.zip -Algorithm SHA256).Hash.ToLower()
+          if ($expected -ne $actual) { throw "deno.zip 校验失败：期望 $expected，实际 $actual" }
+          Write-Host "deno.zip SHA256 verified: $actual"
+          Expand-Archive deno.zip -DestinationPath deno-temp -Force
+          New-Item -ItemType Directory -Force vendor | Out-Null
+          Copy-Item deno-temp/deno.exe vendor/deno.exe
+
+      - name: Download and verify FFmpeg essentials
+        shell: pwsh
+        run: |
+          $url = 'https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip'
+          Invoke-WebRequest $url -OutFile ffmpeg.zip
+          $actual = (Get-FileHash ffmpeg.zip -Algorithm SHA256).Hash.ToLower()
+          Write-Host "ffmpeg.zip SHA256 = $actual"
+          $expected = ''
+          try {
+            Invoke-WebRequest "$url.sha256" -OutFile ffmpeg.sha256 -ErrorAction Stop
+            $expected = (Get-Content ffmpeg.sha256 -Raw).Trim().Split(' ')[0].ToLower()
+          } catch {
+            Write-Warning '上游未提供 .sha256 校验文件，本次跳过校验；请记录上面的哈希值并在发布说明中公布。'
+          }
+          if ($expected -and $expected -ne $actual) { throw "FFmpeg 压缩包校验失败：期望 $expected，实际 $actual" }
+          Expand-Archive ffmpeg.zip -DestinationPath ffmpeg-temp
+          Copy-Item (Get-ChildItem ffmpeg-temp -Recurse -Filter ffmpeg.exe | Select-Object -First 1).FullName vendor/ffmpeg.exe
+          Copy-Item (Get-ChildItem ffmpeg-temp -Recurse -Filter ffprobe.exe | Select-Object -First 1).FullName vendor/ffprobe.exe
+      - name: Collect upstream licenses
+        shell: pwsh
+        run: |
+          # GPL/LGPL 的二进制必须随附许可证原文，这些文件会随 extraResources 一起进入安装包。
+          $license = Get-ChildItem ffmpeg-temp -Recurse -Include LICENSE, LICENSE.txt, COPYING, COPYING.* | Select-Object -First 1
+          if ($license) { Copy-Item $license.FullName vendor/FFMPEG-LICENSE.txt } else { throw 'FFmpeg 压缩包中找不到许可证文件' }
+          Invoke-WebRequest https://raw.githubusercontent.com/yt-dlp/yt-dlp/master/LICENSE -OutFile vendor/YT-DLP-LICENSE.txt
+          Invoke-WebRequest https://raw.githubusercontent.com/denoland/deno/main/LICENSE.md -OutFile vendor/DENO-LICENSE.txt
+          Get-ChildItem vendor
+      - name: Build
+        run: npm run dist
+      - uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
+        with: { files: 'dist/NovaPull-*' }
+      - uses: actions/upload-artifact@v4
+        if: ${{ !startsWith(github.ref, 'refs/tags/') }}
+        with: { name: NovaPull-Windows, path: 'dist/NovaPull-*' }

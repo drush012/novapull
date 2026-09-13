@@ -1,0 +1,11 @@
+node_modules/
+.npm-cache/
+.electron-cache/
+.electron-runtime.zip
+dist/
+/NovaPull-*.exe
+dist-*/
+release/
+vendor/*.exe
+*.log
+.DS_Store
