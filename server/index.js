@@ -44,7 +44,10 @@ function adoptNewCodes() {
   try { disk = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8')); }
   catch { return; }
   for (const [code, entry] of Object.entries((disk && disk.codes) || {})) {
-    if (!db.codes[code]) db.codes[code] = entry;
+    if (!db.codes[code]) { db.codes[code] = entry; continue; }
+    // revoke-code.js flips this on an existing code, so it is the one field the
+    // file may know better than memory. The binding stays whatever we hold.
+    db.codes[code].revoked = Boolean(entry.revoked);
   }
 }
 
@@ -195,6 +198,11 @@ function logout(request, response) {
 
 /* --------------------------------------------------------- activation */
 
+/** A code with no expiresAt is a permanent one and never runs out. */
+function expired(entry) {
+  return Boolean(entry && entry.expiresAt && Date.now() > entry.expiresAt);
+}
+
 // A code is spent on the first device that redeems it and stays bound to that
 // device and account. Redeeming the same pair again succeeds so a reinstall
 // does not cost the user their code; anything else is refused.
@@ -211,6 +219,7 @@ async function redeemActivation(request, response) {
   adoptNewCodes();
   const entry = db.codes[code];
   if (!entry) return send(response, 404, { message: '激活码不存在' });
+  if (entry.revoked) return send(response, 403, { message: '该激活码已被吊销' });
   if (entry.deviceId && entry.deviceId !== deviceId) return send(response, 409, { message: '该激活码已绑定其他设备' });
   if (entry.username && entry.username !== user.username) return send(response, 409, { message: '该激活码已被其他账号使用' });
 
@@ -218,9 +227,13 @@ async function redeemActivation(request, response) {
     entry.deviceId = deviceId;
     entry.username = user.username;
     entry.activatedAt = Date.now();
+    // The plan's clock starts here, not when the code was minted.
+    entry.expiresAt = entry.days ? entry.activatedAt + entry.days * 86400000 : null;
     save();
+  } else if (expired(entry)) {
+    return send(response, 403, { message: '该激活码已到期' });
   }
-  send(response, 200, { ok: true, activatedAt: entry.activatedAt });
+  send(response, 200, { ok: true, activatedAt: entry.activatedAt, expiresAt: entry.expiresAt || null, plan: entry.plan || null });
 }
 
 async function activationStatus(request, response) {
@@ -229,8 +242,19 @@ async function activationStatus(request, response) {
   const deviceId = String(body.deviceId || '').trim();
   adoptNewCodes();
   const entry = db.codes[code];
-  const active = Boolean(entry && deviceId && entry.deviceId === deviceId);
-  send(response, 200, { active, activatedAt: active ? entry.activatedAt : null });
+  const bound = Boolean(entry && deviceId && entry.deviceId === deviceId);
+  const revoked = Boolean(entry && entry.revoked);
+  const isExpired = bound && expired(entry);
+  // Why it is off travels with the answer, so the app can explain itself rather
+  // than just going quiet.
+  send(response, 200, {
+    active: bound && !revoked && !isExpired,
+    revoked: bound && revoked,
+    expired: isExpired,
+    plan: bound ? entry.plan || null : null,
+    expiresAt: bound ? entry.expiresAt || null : null,
+    activatedAt: bound ? entry.activatedAt : null
+  });
 }
 
 const ROUTES = {

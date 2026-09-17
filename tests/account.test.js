@@ -15,9 +15,43 @@ Module._load = function (request, ...rest) {
 };
 const {
   validateCredentials, normalizeServer, resolveServer, normalizeCode, deviceId,
-  MIN_PASSWORD, DEFAULT_SERVER
+  withinGrace, MIN_PASSWORD, DEFAULT_SERVER, GRACE_DAYS
 } = require('../src/account');
 Module._load = originalLoad;
+
+const DAY = 86400000;
+const NOW = Date.UTC(2026, 8, 17);
+
+// Revoking a code is worth nothing if a device can simply stay offline and keep
+// the last "yes" forever, so a stored activation expires without confirmation.
+test('联网确认过的激活在宽限期内仍然有效', () => {
+  assert.equal(withinGrace({ active: true, verifiedAt: NOW - 3 * DAY }, NOW), true);
+});
+
+test('超过宽限期未确认的激活失效', () => {
+  assert.equal(withinGrace({ active: true, verifiedAt: NOW - (GRACE_DAYS + 1) * DAY }, NOW), false);
+});
+
+test('没有确认时间时退回激活时间计算', () => {
+  assert.equal(withinGrace({ active: true, activatedAt: NOW - DAY }, NOW), true);
+  assert.equal(withinGrace({ active: true, activatedAt: NOW - 30 * DAY }, NOW), false);
+});
+
+// Otherwise unplugging the network would stretch a 3-day plan to 17.
+test('套餐到期后不吃宽限期', () => {
+  assert.equal(withinGrace({ active: true, verifiedAt: NOW, expiresAt: NOW - 1 }, NOW), false);
+  assert.equal(withinGrace({ active: true, verifiedAt: NOW, expiresAt: NOW + DAY }, NOW), true);
+});
+
+test('永久码没有到期时间，宽限期照常', () => {
+  assert.equal(withinGrace({ active: true, verifiedAt: NOW - DAY, expiresAt: null }, NOW), true);
+});
+
+test('本来就没激活的不会因为宽限期变成有效', () => {
+  assert.equal(withinGrace({ active: false, verifiedAt: NOW }, NOW), false);
+  assert.equal(withinGrace(null, NOW), false);
+  assert.equal(withinGrace({ active: true }, NOW), false, '没有任何时间戳不能算数');
+});
 
 // The address ships with the app so users never see the field; what they type
 // only overrides it.
@@ -25,6 +59,12 @@ test('留空时用内置地址，填了就用填的', () => {
   assert.equal(resolveServer(''), DEFAULT_SERVER);
   assert.equal(resolveServer('   '), DEFAULT_SERVER);
   assert.equal(resolveServer('https://mine.example.com'), 'https://mine.example.com');
+});
+
+// Passwords and activation codes travel over this address, so a build that
+// shipped an http:// one would put both on the wire in the clear.
+test('内置账号服务器地址是 https', () => {
+  assert.match(DEFAULT_SERVER, /^https:\/\//);
 });
 
 test('接受正常用户名并转成小写', () => {

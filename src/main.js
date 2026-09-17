@@ -607,7 +607,7 @@ ipcMain.handle('start-download', async (event, task) => {
   // An activated device downloads freely; anything else spends one of the
   // day's free slots. Claimed before any work starts so a refused task never
   // touches the network.
-  if (!account.publicState().activation.active && !usage.claim(id).allowed) {
+  if (!account.isActive() && !usage.claim(id).allowed) {
     throw new Error(t('err.dailyLimit', { limit: usage.FREE_DAILY_LIMIT }));
   }
   const url = validateUrl(task.url);

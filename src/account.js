@@ -18,10 +18,7 @@ const TIMEOUT_MS = 15000;
 
 // The address shipped with the app: every user talks to the same server, so
 // nobody should have to know it exists. The settings field only overrides it.
-//
-// TODO: fill in once the account server is deployed. While it is empty the app
-// simply reports that no server is set instead of calling something bogus.
-const DEFAULT_SERVER = '';
+const DEFAULT_SERVER = 'https://pull.qike.ccwu.cc';
 
 /** Where requests actually go, given whatever the user did or did not type. */
 function resolveServer(configured) {
@@ -37,6 +34,22 @@ function validateCredentials(username, password, { requirePassword = true } = {}
     throw new Error(t('err.shortPassword', { min: MIN_PASSWORD }));
   }
   return account;
+}
+
+// How long an activation stands without the server confirming it. Long enough
+// that a bad week of connectivity goes unnoticed, short enough that staying
+// offline is not a way to outlive a revoked code.
+const GRACE_DAYS = 14;
+
+/** Whether a stored activation still counts while the server cannot be reached. */
+function withinGrace(activation, now = Date.now()) {
+  if (!activation || !activation.active) return false;
+  // A plan that ran out is over whether or not the server can be reached —
+  // otherwise pulling the network cable would extend every short plan by the
+  // whole grace window.
+  if (activation.expiresAt && now > Number(activation.expiresAt)) return false;
+  const last = Number(activation.verifiedAt || activation.activatedAt || 0);
+  return last > 0 && now - last < GRACE_DAYS * 86400000;
 }
 
 function normalizeCode(value) {
@@ -101,10 +114,17 @@ function publicState() {
     signedIn: Boolean(state.token),
     user: state.user,
     minPassword: MIN_PASSWORD,
+    graceDays: GRACE_DAYS,
     activation: {
       active: Boolean(state.activation && state.activation.active),
       code: (state.activation && state.activation.code) || '',
-      activatedAt: (state.activation && state.activation.activatedAt) || 0
+      activatedAt: (state.activation && state.activation.activatedAt) || 0,
+      plan: (state.activation && state.activation.plan) || null,
+      expiresAt: (state.activation && state.activation.expiresAt) || null,
+      // Why it is off, so the app can explain rather than just stop working.
+      revoked: Boolean(state.activation && state.activation.revoked),
+      expired: Boolean(state.activation && state.activation.expired),
+      stale: Boolean(state.activation && state.activation.stale)
     }
   };
 }
@@ -192,6 +212,16 @@ function setServer(value) {
   return publicState();
 }
 
+/**
+ * What the download gate asks. Checked locally against the stored expiry too,
+ * so a plan that ran out stops at once even with no network to confirm it.
+ */
+function isActive(now = Date.now()) {
+  const { activation } = readState();
+  if (!activation || !activation.active) return false;
+  return !(activation.expiresAt && now > Number(activation.expiresAt));
+}
+
 /** Spends a code on this device. The server refuses one already bound elsewhere. */
 async function activate(code) {
   const state = readState();
@@ -201,15 +231,23 @@ async function activate(code) {
   const data = await call('/api/activation/redeem', { body: { code: value, deviceId: id }, token: state.token });
   writeState({
     ...state,
-    activation: { code: value, deviceId: id, active: true, activatedAt: data.activatedAt || Date.now() }
+    activation: {
+      code: value, deviceId: id, active: true,
+      activatedAt: data.activatedAt || Date.now(), verifiedAt: Date.now(),
+      plan: data.plan || null, expiresAt: data.expiresAt || null
+    }
   });
   return publicState();
 }
 
 /**
- * Re-checks the binding with the server. An unreachable server leaves the last
- * known answer alone: a flaky network is not a reason to lock someone out of a
- * device they already activated.
+ * Re-checks the binding with the server, which is what makes revoking a code
+ * mean anything.
+ *
+ * An unreachable server does not immediately switch someone off — a flaky
+ * network is not a reason to lock a paying user out. But it cannot hold forever
+ * either, or staying offline would be a way to keep a revoked code alive, so a
+ * stored activation only stands for GRACE_DAYS after its last confirmation.
  */
 async function activationStatus() {
   const state = readState();
@@ -218,8 +256,25 @@ async function activationStatus() {
     const data = await call('/api/activation/status', {
       body: { code: state.activation.code, deviceId: state.activation.deviceId || deviceId() }
     });
-    writeState({ ...state, activation: { ...state.activation, active: Boolean(data.active) } });
-  } catch { /* Keep the stored state. */ }
+    writeState({
+      ...state,
+      activation: {
+        ...state.activation,
+        active: Boolean(data.active),
+        revoked: Boolean(data.revoked),
+        expired: Boolean(data.expired),
+        plan: data.plan || null,
+        expiresAt: data.expiresAt || null,
+        verifiedAt: Date.now(),
+        stale: false
+      }
+    });
+  } catch {
+    // Offline: keep the stored answer only while it is still fresh enough.
+    if (!withinGrace(state.activation)) {
+      writeState({ ...state, activation: { ...state.activation, active: false, stale: true } });
+    }
+  }
   return publicState();
 }
 
@@ -228,7 +283,10 @@ module.exports = {
   normalizeServer,
   resolveServer,
   normalizeCode,
+  withinGrace,
+  isActive,
   deviceId,
+  GRACE_DAYS,
   publicState,
   readState,
   writeState,

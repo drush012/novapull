@@ -536,6 +536,14 @@ $$('[data-close-update]').forEach(button => button.onclick = () => $('#updateMod
 // The bearer token stays in the main process.
 let accountInfo = null;
 
+// A permanent code says so; a timed one says how long is left, rounded up so
+// the last partial day still reads as a day rather than zero.
+function activeLine(activation) {
+  if (!activation.expiresAt) return t('account.activeForever');
+  const left = Math.max(0, Math.ceil((Number(activation.expiresAt) - Date.now()) / 86400000));
+  return t('account.activeUntil', { days: left, date: new Date(Number(activation.expiresAt)).toLocaleDateString() });
+}
+
 function paintAccount() {
   const info = accountInfo;
   const signedIn = Boolean(info && info.signedIn);
@@ -551,9 +559,12 @@ function paintAccount() {
 
   const active = Boolean(info && info.activation && info.activation.active);
   const quota = (info && info.quota) || { limit: 0, remaining: 0 };
-  $('#accountActivationState').textContent = active ? t('account.active')
-    : quota.remaining > 0 ? t('account.inactive', { remaining: quota.remaining, limit: quota.limit })
-      : t('account.quotaGone');
+  const act = (info && info.activation) || {};
+  const why = act.revoked ? 'account.revoked' : act.expired ? 'account.expired' : act.stale ? 'account.stale' : '';
+  $('#accountActivationState').textContent = active ? activeLine(act)
+    : why ? t(why, { days: (info && info.graceDays) || 14 })
+      : quota.remaining > 0 ? t('account.inactive', { remaining: quota.remaining, limit: quota.limit })
+        : t('account.quotaGone');
   $('#accountCodeRow').classList.toggle('hidden', active);
 
   $('#accountServer').value = (info && info.server) || '';
@@ -584,6 +595,18 @@ async function accountRun(action, successKey) {
 async function refreshAccount() {
   try { accountInfo = await window.nova?.accountState(); } catch { accountInfo = null; }
   paintAccount();
+}
+
+// Revoking a code only means something if the app asks. Opening the dialog is
+// far too rare for that, so an activated device re-checks on every start, and
+// quietly: a user whose activation is fine should never notice this happening.
+async function verifyActivationOnStart() {
+  await refreshAccount();
+  if (!accountInfo?.activation?.active) return;
+  try {
+    accountInfo = await window.nova.accountActivationStatus();
+    paintAccount();
+  } catch { /* offline; account.js decides when a stored activation goes stale */ }
 }
 
 $('#btnAccount').onclick = async () => {
@@ -951,7 +974,7 @@ function paintEngineState() {
 if (window.nova) {
   renderSiteTiles();
   refreshExitIp();
-  refreshAccount();
+  verifyActivationOnStart();
   window.nova.setLanguage?.(getLanguage()).catch(() => {});
   autoCheckUpdate();
   window.nova.appInfo().then(info => {
