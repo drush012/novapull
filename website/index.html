@@ -1,0 +1,288 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title data-i18n="meta.title">NovaPull｜Windows 视频解析下载器 · 4K/8K 无水印</title>
+  <meta name="description" data-i18n-content="meta.description" content="NovaPull 是一款 Windows 视频下载器：粘贴链接自动解析出站点能给的最高画质，抖音 4K/8K 无水印、YouTube 最高 8K HDR，音视频自动合并成 MP4。">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="styles.css">
+  <!-- Picks the language before first paint so an English visitor never sees
+       the Chinese page flash first. -->
+  <script src="lang-boot.js"></script>
+  <!-- Same idea for the theme: replays a stored light/dark choice before the
+       first paint, so switching pages does not flash the other theme. -->
+  <script src="theme-boot.js"></script>
+</head>
+<body>
+
+<header class="nav">
+  <div class="wrap nav-inner">
+    <a class="brand" href="#top">
+      <span class="mark">N</span>
+      <span class="brand-text"><b>NovaPull</b><small>VIDEO DOWNLOADER</small></span>
+    </a>
+    <nav class="nav-links">
+      <a href="#features" data-i18n="nav.features">功能</a>
+      <a href="#tested" data-i18n="nav.tested">实测</a>
+      <a href="#faq" data-i18n="nav.faq">常见问题</a>
+    </nav>
+    <div class="nav-actions">
+      <button class="theme" id="themeToggle" type="button" aria-label="Theme">
+        <svg viewBox="0 0 24 24" fill="none" id="themeIcon"></svg>
+        <span id="themeLabel"></span>
+      </button>
+      <button class="lang" id="langToggle" type="button" aria-label="Language">EN</button>
+      <a class="btn btn-primary btn-sm" href="#download" data-i18n="nav.download">下载</a>
+    </div>
+  </div>
+</header>
+
+<main id="top">
+
+  <!-- ------------------------------------------------------------ hero -->
+  <section class="hero">
+    <div class="wrap hero-grid">
+      <div class="hero-copy">
+        <span class="pill" data-i18n="hero.pill">Windows 视频下载器 · v1.2.0</span>
+        <h1>NovaPull<br><span class="grad" data-i18n="hero.title">视频解析下载</span></h1>
+        <p class="lead" data-i18n="hero.lead">粘贴一条链接，自动拿到站点能给的<strong>最高画质</strong>。抖音 4K/8K 无水印，YouTube 最高 8K HDR，音视频自动合并成 MP4。解析和下载全部在<strong>你自己的电脑</strong>上完成。</p>
+        <div class="cta">
+          <a class="btn btn-primary" href="#download" data-i18n="hero.download">下载 Windows 版</a>
+          <a class="btn btn-ghost" href="#tested" data-i18n="hero.tested">看实测画质 →</a>
+        </div>
+        <p class="mono-note" data-i18n="hero.note">// 免安装版可用 · 内核全部自带 · 无广告</p>
+      </div>
+
+      <!-- A faithful sketch of the app's own parse card, not a stock image:
+           the quality names and the ★ are what the real window shows. -->
+      <div class="window" aria-hidden="true">
+        <div class="win-bar">
+          <span class="win-mark">N</span><span>NovaPull</span>
+          <span class="win-dots"><i></i><i></i><i></i></span>
+        </div>
+        <div class="win-body">
+          <div class="win-url">https://www.youtube.com/watch?v=kKLSuRrZwwE</div>
+          <div class="win-ok" data-i18n="win.ok">解析成功 · 找到 54 个可用格式</div>
+          <div class="win-title">Pixel Perfect 8K HDR</div>
+          <ul class="ladder">
+            <li class="top"><span>★ 8K60 HDR</span><span>AV1</span><b>4.0 GB</b></li>
+            <li><span>4K60 HDR</span><span>AV1</span><b>1.9 GB</b></li>
+            <li><span>2K60</span><span>VP9</span><b>986 MB</b></li>
+            <li><span>1080P60</span><span>AVC</span><b>512 MB</b></li>
+            <li><span>720P60</span><span>AVC</span><b>268 MB</b></li>
+          </ul>
+          <div class="win-foot">
+            <span class="bar"><i style="width:62%"></i></span>
+            <span class="win-speed">38.4 MB/s</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ------------------------------------------------------- platforms -->
+  <section class="strip" id="platforms">
+    <div class="wrap">
+      <p class="strip-title" data-i18n="strip.title">一个窗口，接住这些站点的链接</p>
+      <ul class="sites">
+        <li data-i18n="site.douyin">抖音</li>
+        <li data-i18n="site.bilibili">哔哩哔哩</li>
+        <li>YouTube</li>
+        <li data-i18n="site.xhs">小红书</li>
+        <li>TikTok</li>
+        <li>Instagram</li>
+        <li>X / Twitter</li>
+        <li>Facebook</li>
+        <li data-i18n="site.kuaishou">快手</li>
+        <li data-i18n="site.weibo">微博</li>
+        <li>Vimeo</li>
+        <li>Twitch</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- -------------------------------------------------------- features -->
+  <section class="section" id="features">
+    <div class="wrap">
+      <p class="eyebrow">FEATURES</p>
+      <h2 data-i18n="features.title">不是又一个套壳下载器</h2>
+
+      <div class="cards">
+        <article class="card">
+          <div class="icon">8K</div>
+          <h3 data-i18n="f1.title">画质按档位直接列出</h3>
+          <p data-i18n="f1.body">不是像素数字，而是 8K / 4K / 2K / 1080P。按分辨率排好，默认选中最高那一档，一眼就知道能拿到什么。</p>
+        </article>
+        <article class="card">
+          <div class="icon">⌁</div>
+          <h3 data-i18n="f2.title">抖音拿到的是真 4K</h3>
+          <p data-i18n="f2.body">常规解析只能拿到带水印的 720p。NovaPull 直接读页面播放器手里的画质表，拿到 4K/8K 的无水印原始流。</p>
+        </article>
+        <article class="card">
+          <div class="icon">⇄</div>
+          <h3 data-i18n="f3.title">三条路自动切换</h3>
+          <p data-i18n="f3.body">yt-dlp 常规解析、播放器探测、媒体嗅探——按站点自动选。走到嗅探兜底时会如实告诉你，不会把低画质说成最高画质。</p>
+        </article>
+        <article class="card">
+          <div class="icon">♫</div>
+          <h3 data-i18n="f4.title">音视频自动合并</h3>
+          <p data-i18n="f4.body">高画质通常是分开的视频轨和音频轨，下完自动用 FFmpeg 合成一个标准 MP4。只想要声音？直接选仅音频，出 mp3。</p>
+        </article>
+        <article class="card">
+          <div class="icon">↻</div>
+          <h3 data-i18n="f5.title">停了能接着下</h3>
+          <p data-i18n="f5.body">停止会保留已下载的部分，继续或重试都从断点接上。选的画质不可用时明确提示，不会悄悄换成别的。</p>
+        </article>
+        <article class="card">
+          <div class="icon">▣</div>
+          <h3 data-i18n="f6.title">装上就能用</h3>
+          <p data-i18n="f6.body">yt-dlp、FFmpeg、Deno 全部随程序附带，只用自带的那一份，不去调用你电脑上另外装的同名程序。中英双语，浅色深色。</p>
+        </article>
+      </div>
+
+      <div class="stats">
+        <div><b>12</b><span data-i18n="stat.sites">常用站点一键打开</span></div>
+        <div><b>8K</b><span data-i18n="stat.quality">实测最高画质</span></div>
+        <div><b>3</b><span data-i18n="stat.routes">条解析路径</span></div>
+        <div><b>0</b><span data-i18n="stat.ads">广告与捆绑</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ------------------------------------------------------ how it works -->
+  <section class="section alt" id="how">
+    <div class="wrap">
+      <p class="eyebrow">HOW IT WORKS</p>
+      <h2 data-i18n="how.title">三步，从链接到文件</h2>
+      <ol class="steps">
+        <li>
+          <span class="step-no">01</span>
+          <h3 data-i18n="how1.title">粘贴</h3>
+          <p data-i18n="how1.body">链接，或者整段「标题 + 链接」的分享文案都行，程序会把网址自己找出来。</p>
+        </li>
+        <li>
+          <span class="step-no">02</span>
+          <h3 data-i18n="how2.title">解析</h3>
+          <p data-i18n="how2.body">后台先以访客身份访问一次站点拿到匿名 Cookie，再列出所有能下载的画质。大多数站点不需要登录。</p>
+        </li>
+        <li>
+          <span class="step-no">03</span>
+          <h3 data-i18n="how3.title">下载</h3>
+          <p data-i18n="how3.body">选一档，分别下载视频轨和音频轨，合并成 MP4 存进你指定的文件夹。</p>
+        </li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- ---------------------------------------------------------- tested -->
+  <section class="section" id="tested">
+    <div class="wrap">
+      <p class="eyebrow">MEASURED</p>
+      <h2 data-i18n="tested.title">实测画质，不是宣传数字</h2>
+      <p class="sub" data-i18n="tested.sub">同一台电脑、同一个出口，<strong>完全不登录、不带任何 Cookie</strong> 实测。能拿到多高取决于站点给多高，我们只写测出来的。</p>
+
+      <div class="table-wrap">
+        <table class="measured">
+          <thead>
+            <tr>
+              <th data-i18n="t.site">站点</th>
+              <th data-i18n="t.anon">不登录可用</th>
+              <th data-i18n="t.best">实测最高画质</th>
+              <th data-i18n="t.wm">去水印</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td data-i18n="site.douyin">抖音</td><td class="yes" data-i18n="t.yes">是</td><td><b>4K / 8K</b></td><td class="yes" data-i18n="t.support">支持</td></tr>
+            <tr><td>YouTube</td><td class="yes" data-i18n="t.yes">是</td><td><b>4K / 8K</b></td><td class="yes" data-i18n="t.support">支持</td></tr>
+            <tr><td>Vimeo</td><td class="yes" data-i18n="t.yes">是</td><td><b>4K / 1080p</b></td><td class="yes" data-i18n="t.support">支持</td></tr>
+            <tr><td>Facebook</td><td class="yes" data-i18n="t.yes">是</td><td>1080p AV1</td><td class="yes" data-i18n="t.support">支持</td></tr>
+            <tr><td>Instagram</td><td class="yes" data-i18n="t.yes">是</td><td>1080×1920</td><td class="yes" data-i18n="t.support">支持</td></tr>
+            <tr><td data-i18n="site.bilibili">哔哩哔哩</td><td class="yes" data-i18n="t.yes">是</td><td data-i18n="t.bili">1080p30（更高档需大会员）</td><td class="no" data-i18n="t.nosupport">不支持</td></tr>
+            <tr><td>TikTok</td><td class="yes" data-i18n="t.yes">是</td><td data-i18n="t.source">跟随源视频</td><td class="yes" data-i18n="t.support">支持</td></tr>
+            <tr><td>X / Twitter</td><td class="yes" data-i18n="t.yes">是</td><td data-i18n="t.source">跟随源视频</td><td class="yes" data-i18n="t.support">支持</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+    </div>
+  </section>
+
+
+  <!-- -------------------------------------------------------- download -->
+  <section class="section" id="download">
+    <div class="wrap">
+      <p class="eyebrow">DOWNLOAD</p>
+      <h2 data-i18n="dl.title">下载 NovaPull 1.2.0</h2>
+      <p class="sub" data-i18n="dl.sub">支持 Windows 10 / 11，64 位。两个版本功能完全一样。</p>
+
+      <div class="downloads">
+        <div class="dl">
+          <h3 data-i18n="dl.setup">安装版</h3>
+          <p data-i18n="dl.setupMeta">可选安装位置、创建桌面快捷方式，启动更快。</p>
+          <a class="btn btn-primary" href="https://github.com/drush012/novapull/releases/download/v1.2.0/NovaPull-1.2.0-setup.exe" data-i18n="dl.setupBtn">下载安装版 · 203 MB</a>
+        </div>
+        <div class="dl">
+          <h3 data-i18n="dl.portable">免安装版</h3>
+          <p data-i18n="dl.portableMeta">双击直接运行，不往系统里写任何东西。首次启动要十几秒解包。</p>
+          <a class="btn btn-primary" href="https://github.com/drush012/novapull/releases/download/v1.2.0/NovaPull-1.2.0-portable.exe" data-i18n="dl.portableBtn">下载免安装版 · 203 MB</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ------------------------------------------------------------- faq -->
+  <section class="section alt" id="faq">
+    <div class="wrap narrow">
+      <p class="eyebrow">FAQ</p>
+      <h2 data-i18n="faq.title">常见问题</h2>
+
+      <details>
+        <summary data-i18n="q1">激活码怎么用？</summary>
+        <p data-i18n="a1">打开软件，点右上角蓝色的「登录」，注册一个用户名，然后在「设备激活」里输入激活码。激活后按钮会变成你的用户名，弹窗里能看到剩余天数。</p>
+      </details>
+      <details>
+        <summary data-i18n="q2">换电脑或重装系统怎么办？</summary>
+        <p data-i18n="a2">激活码绑定的是这台电脑上的这份安装。在同一台电脑上重装软件、重新输入同一个码不会消耗任何东西。换了电脑或重装了系统，请联系我们处理换绑。</p>
+      </details>
+      <details>
+        <summary data-i18n="q3">会收集我的数据吗？</summary>
+        <p data-i18n="a3">注册和登录时，服务器收到你的用户名和密码（经 HTTPS 传输，服务器只保存密码的哈希，不存原文）；激活和启动复查时，收到激活码和软件首次运行时随机生成的一个编号。<strong>不读取任何硬件信息，也不记录你下载了什么</strong>——解析和下载完全在你本机进行，服务器看不到。从没登录过的电脑，完全不会连接我们的服务器。</p>
+      </details>
+      <details>
+        <summary data-i18n="q4">没网的时候还能用吗？</summary>
+        <p data-i18n="a4">已激活的电脑，14 天内连不上服务器也照常使用，网络抽风不会影响你。超过 14 天会暂停，联网后自动恢复。</p>
+      </details>
+      <details>
+        <summary data-i18n="q5">为什么 YouTube 有时只有 1080p？</summary>
+        <p data-i18n="a5">YouTube 按出口 IP 判断你是不是机器人。机房 IP（大多数代理节点）很容易被拦，这时只能拿到登录后的 1080p60。换一个干净的节点，通常就能直接拿到 8K。</p>
+      </details>
+      <details>
+        <summary data-i18n="q6">Windows 提示「未知发布者」？</summary>
+        <p data-i18n="a6">NovaPull 目前还没有购买代码签名证书，所以 Windows 会显示这个提示。点「更多信息 → 仍要运行」即可。请只从本站下载安装包。</p>
+      </details>
+    </div>
+  </section>
+
+
+</main>
+
+<footer class="footer">
+  <div class="wrap foot-inner">
+    <div class="brand">
+      <span class="mark">N</span>
+      <span class="brand-text"><b>NovaPull</b><small>© 2026</small></span>
+    </div>
+    <nav class="foot-links">
+      <a href="#features" data-i18n="nav.features">功能</a>
+      <a href="#how" data-i18n="foot.how">原理</a>
+      <a href="#download" data-i18n="nav.download">下载</a>
+      <a href="#platforms" data-i18n="foot.platforms">支持平台</a>
+      <a href="https://github.com/drush012/novapull/issues" data-i18n="foot.contact">联系我们</a>
+    </nav>
+  </div>
+</footer>
+
+<script src="app.js"></script>
+</body>
+</html>

@@ -88,15 +88,20 @@ Datacenter IPs are flagged as bots far more readily. If a video only reaches 108
 
 ## Privacy
 
-NovaPull has no account system and sends nothing to its authors. It does contact a few outside services, each tied to something the app visibly does:
+NovaPull contacts a few services, each tied to something the app visibly does. Parsing and downloading never pass through any server of ours — nothing about what you download is ever sent to us.
 
 | Service | When | What it receives |
 |---|---|---|
 | The site a pasted link points to | parsing and downloading | the requests themselves; that site's cookies from the built-in browser are added only when a signed-in pass is needed |
+| `pull.qike.ccwu.cc` (the NovaPull account server) | when you register, sign in or activate; and on each start **only if this device is activated**, to re-check that its code is still valid | your username and password (the password travels over HTTPS and the server keeps only a scrypt hash of it), the activation code, and a random id the app generated on first run. **No hardware information, and nothing about what you download.** |
 | `ipapi.co`, falling back to `api.ipify.org` | on startup, to show the current exit IP on the home page | your IP address — which is what they send back |
 | `api.github.com` | the update check: on startup at most once a day (can be switched off in settings), or when you choose *Check for updates* | a request for the latest NovaPull release |
 
-Login cookies are written to your own userData folder and read only by the bundled yt-dlp. The app never uploads them anywhere.
+A device that has never signed in or activated never contacts the account server at all.
+
+The random device id lives in `device-id.txt` in the userData folder; deleting it makes the app look like a new installation, which also detaches any activation from it. The account server is reached through Cloudflare, which terminates TLS and so can see the requests in transit.
+
+Login cookies for video sites are written to your own userData folder and read only by the bundled yt-dlp. The app never uploads them anywhere.
 
 ## Running locally
 
