@@ -340,11 +340,17 @@ async function redeemActivation(request, response) {
   if (entry.email && entry.email !== user.email) return send(response, 409, { message: '该激活码已被其他账号使用' }, request);
 
   if (!entry.deviceId) {
+    if (entry.activatedAt) {
+      // Freed up by a rebind, not fresh — same clock keeps running, only the
+      // device changes. Otherwise every rebind would double as a free renewal.
+      if (expired(entry)) return send(response, 403, { message: '该激活码已到期' }, request);
+    } else {
+      // The plan's clock starts here, not when the code was minted.
+      entry.activatedAt = Date.now();
+      entry.expiresAt = entry.days ? entry.activatedAt + entry.days * 86400000 : null;
+    }
     entry.deviceId = deviceId;
     entry.email = user.email;
-    entry.activatedAt = Date.now();
-    // The plan's clock starts here, not when the code was minted.
-    entry.expiresAt = entry.days ? entry.activatedAt + entry.days * 86400000 : null;
     save();
   } else if (expired(entry)) {
     return send(response, 403, { message: '该激活码已到期' }, request);
