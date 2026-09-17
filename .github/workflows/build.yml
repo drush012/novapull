@@ -141,6 +141,27 @@ jobs:
           files: |
             NovaPull-*.exe
             dist/NovaPull-*.blockmap
+
+      # The R2 mirror exists because a China-hosted download of the GitHub
+      # asset itself was too slow to be usable. Object keys stay fixed
+      # (no version number) so the website's download links never need
+      # touching between releases — this step just overwrites them.
+      - name: Copy installers under fixed names for the R2 mirror
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force r2-upload | Out-Null
+          Copy-Item (Get-ChildItem -Path . -Filter 'NovaPull-*-setup.exe' | Select-Object -First 1).FullName r2-upload/NovaPull-setup.exe
+          Copy-Item (Get-ChildItem -Path . -Filter 'NovaPull-*-portable.exe' | Select-Object -First 1).FullName r2-upload/NovaPull-portable.exe
+      - name: Publish installers to the R2 mirror
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: |
+            r2 object put novapull-releases/NovaPull-setup.exe --file r2-upload/NovaPull-setup.exe --content-type application/octet-stream --remote
+            r2 object put novapull-releases/NovaPull-portable.exe --file r2-upload/NovaPull-portable.exe --content-type application/octet-stream --remote
       - uses: actions/upload-artifact@v4
         if: ${{ !startsWith(github.ref, 'refs/tags/') }}
         with:
