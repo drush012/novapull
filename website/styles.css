@@ -61,6 +61,8 @@
 html.i18n-pending body { visibility: hidden; animation: i18n-reveal 0s 1.2s forwards; }
 @keyframes i18n-reveal { to { visibility: visible; } }
 
+.hidden { display: none !important; }
+
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; scroll-padding-top: 72px; }
 body {
@@ -301,3 +303,37 @@ details strong { color: var(--text); }
   .foot-inner { grid-template-columns: 1fr; justify-items: center; text-align: center; }
   .foot-links { flex-wrap: wrap; justify-content: center; }
 }
+
+/* ------------------------------------------------------------- user centre */
+.acct-overlay {
+  position: fixed; inset: 0; z-index: 50; display: flex; align-items: center; justify-content: center;
+  background: rgba(10, 16, 28, .55); padding: 20px;
+}
+.acct-modal {
+  width: min(420px, 100%); background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--radius); box-shadow: var(--shadow); padding: 22px 24px;
+}
+.acct-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+.acct-head h3 { font-size: 18px; }
+.icon-btn {
+  border: 0; background: transparent; color: var(--muted); font-size: 20px; line-height: 1;
+  cursor: pointer; padding: 4px 8px; border-radius: 6px;
+}
+.icon-btn:hover { background: var(--bg-alt); color: var(--text); }
+#acctSignedOut label { font-size: 13px; color: var(--muted); display: block; margin-bottom: 8px; }
+#acctSignedOut .url-row input { padding: 8px 13px; border-radius: 8px; }
+#acctSignedOut .url-row + .url-row { margin-top: 8px; }
+.acct-who { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+.acct-who span { font-weight: 650; word-break: break-all; }
+.acct-empty { color: var(--muted); font-size: 14px; }
+.acct-msg { margin-top: 14px; font-size: 14px; color: var(--accent); }
+.acct-msg.is-error { color: #d84343; }
+
+.acct-item {
+  border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; margin-top: 10px; font-size: 14px;
+}
+.acct-item code { font-family: var(--mono); font-size: 13px; }
+.acct-item .row { display: flex; justify-content: space-between; gap: 12px; margin-top: 4px; color: var(--muted); }
+.acct-item .badge { font-weight: 650; }
+.acct-item .badge.ok { color: var(--good); }
+.acct-item .badge.off { color: #d84343; }

@@ -93,7 +93,7 @@ NovaPull contacts a few services, each tied to something the app visibly does. P
 | Service | When | What it receives |
 |---|---|---|
 | The site a pasted link points to | parsing and downloading | the requests themselves; that site's cookies from the built-in browser are added only when a signed-in pass is needed |
-| `pull.qike.ccwu.cc` (the NovaPull account server) | when you register, sign in or activate; and on each start **only if this device is activated**, to re-check that its code is still valid | your username and password (the password travels over HTTPS and the server keeps only a scrypt hash of it), the activation code, and a random id the app generated on first run. **No hardware information, and nothing about what you download.** |
+| `pull.qike.ccwu.cc` (the NovaPull account server) | when you sign in or activate; and on each start **only if this device is activated**, to re-check that its code is still valid | your email and a one-time code sent to it (no password — the code expires in 10 minutes and is discarded, win or lose), the activation code, and a random id the app generated on first run. **No hardware information, and nothing about what you download.** |
 | `ipapi.co`, falling back to `api.ipify.org` | on startup, to show the current exit IP on the home page | your IP address — which is what they send back |
 | `api.github.com` | the update check: on startup at most once a day (can be switched off in settings), or when you choose *Check for updates* | a request for the latest NovaPull release |
 

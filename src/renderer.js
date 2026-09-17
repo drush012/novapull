@@ -547,15 +547,14 @@ function activeLine(activation) {
 function paintAccount() {
   const info = accountInfo;
   const signedIn = Boolean(info && info.signedIn);
-  const name = (info && info.user && info.user.username) || '';
-  $('#accountName').textContent = signedIn && name ? name : t('account.button');
+  const email = (info && info.user && info.user.email) || '';
+  $('#accountName').textContent = signedIn && email ? email : t('account.button');
   // Filled while there is still something to do here, plain once the device is
   // activated and the chip is only telling you who you are.
   $('#btnAccount').classList.toggle('filled', !(info && info.activation && info.activation.active));
-  $('#accountWho').textContent = signedIn ? t('account.signedInAs', { name }) : t('account.signedOut');
+  $('#accountWho').textContent = signedIn ? t('account.signedInAs', { name: email }) : t('account.signedOut');
   $('#accountLogout').classList.toggle('hidden', !signedIn);
   $('#accountForm').classList.toggle('hidden', signedIn);
-  $('#accountFormActions').classList.toggle('hidden', signedIn);
 
   const active = Boolean(info && info.activation && info.activation.active);
   const quota = (info && info.quota) || { limit: 0, remaining: 0 };
@@ -568,9 +567,6 @@ function paintAccount() {
   $('#accountCodeRow').classList.toggle('hidden', active);
 
   $('#accountServer').value = (info && info.server) || '';
-  // These carry a value from the dictionary, so they cannot be data-i18n-placeholder.
-  $('#accountUser').placeholder = t('account.usernamePlaceholder');
-  $('#accountPass').placeholder = t('account.passwordPlaceholder', { min: (info && info.minPassword) || 8 });
   $('#accountCode').placeholder = t('account.codePlaceholder');
 }
 
@@ -631,17 +627,49 @@ const serverThen = action => async () => {
   return action();
 };
 
-$('#accountLogin').onclick = () => accountRun(serverThen(async () => {
-  const state = await window.nova.accountLogin($('#accountUser').value, $('#accountPass').value);
-  $('#accountPass').value = '';
+// The send-code button doubles as "resend": each click restarts the same
+// cooldown, and the server enforces its own copy regardless of what this one
+// shows, so a stale countdown here is only ever a UI nicety, never a hole.
+const CODE_COOLDOWN_S = 60;
+let codeCooldownTimer = null;
+
+function paintCodeCooldown(secondsLeft) {
+  const button = $('#accountSendCode');
+  if (secondsLeft > 0) {
+    button.disabled = true;
+    button.textContent = t('account.resendIn', { seconds: secondsLeft });
+  } else {
+    button.disabled = false;
+    button.textContent = t('account.sendCode');
+  }
+}
+
+function startCodeCooldown() {
+  clearInterval(codeCooldownTimer);
+  let left = CODE_COOLDOWN_S;
+  paintCodeCooldown(left);
+  codeCooldownTimer = setInterval(() => {
+    left -= 1;
+    paintCodeCooldown(left);
+    if (left <= 0) clearInterval(codeCooldownTimer);
+  }, 1000);
+}
+
+$('#accountSendCode').onclick = () => accountRun(serverThen(async () => {
+  await window.nova.accountRequestCode($('#accountEmail').value);
+  $('#accountEmailCodeRow').classList.remove('hidden');
+  startCodeCooldown();
+  return accountInfo;
+}), 'account.codeSent');
+
+$('#accountVerifyBtn').onclick = () => accountRun(serverThen(async () => {
+  const state = await window.nova.accountVerifyCode($('#accountEmail').value, $('#accountEmailCode').value);
+  $('#accountEmailCode').value = '';
+  $('#accountEmailCodeRow').classList.add('hidden');
+  clearInterval(codeCooldownTimer);
+  paintCodeCooldown(0);
   return state;
 }), 'account.loginOk');
-
-$('#accountRegister').onclick = () => accountRun(serverThen(async () => {
-  const state = await window.nova.accountRegister($('#accountUser').value, $('#accountPass').value);
-  $('#accountPass').value = '';
-  return state;
-}), 'account.registerOk');
 
 $('#accountLogout').onclick = () => accountRun(() => window.nova.accountLogout());
 

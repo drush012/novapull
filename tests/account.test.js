@@ -14,8 +14,8 @@ Module._load = function (request, ...rest) {
   return originalLoad.call(this, request, ...rest);
 };
 const {
-  validateCredentials, normalizeServer, resolveServer, normalizeCode, deviceId,
-  verifyLicence, MIN_PASSWORD, DEFAULT_SERVER, GRACE_DAYS, PUBLIC_KEY
+  validateEmail, normalizeServer, resolveServer, normalizeCode, deviceId,
+  verifyLicence, DEFAULT_SERVER, GRACE_DAYS, PUBLIC_KEY
 } = require('../src/account');
 Module._load = originalLoad;
 
@@ -107,23 +107,31 @@ test('内置公钥存在且是一把能用的 Ed25519 公钥', () => {
   assert.equal(key.asymmetricKeyType, 'ed25519');
 });
 
-test('接受正常用户名并转成小写', () => {
-  assert.equal(validateCredentials('  Alice_01 ', 'longenough1'), 'alice_01');
+test('接受主流邮箱并转成小写', () => {
+  assert.equal(validateEmail('  Alice@QQ.com '), 'alice@qq.com');
+  assert.equal(validateEmail('me@Gmail.com'), 'me@gmail.com');
 });
 
-for (const bad of ['', 'ab', 'a'.repeat(21), 'has space', 'bad-dash', 'me@example.com', '用户名']) {
-  test(`拒绝无效用户名 ${JSON.stringify(bad)}`, () => {
-    assert.throws(() => validateCredentials(bad, 'longenough1'), /用户名/);
+for (const bad of ['', 'not-an-email', 'a@b', 'a b@qq.com', 'a@qq']) {
+  test(`拒绝格式不对的邮箱 ${JSON.stringify(bad)}`, () => {
+    assert.throws(() => validateEmail(bad), /邮箱/);
   });
 }
 
-test(`密码短于 ${MIN_PASSWORD} 位被拒绝`, () => {
-  assert.throws(() => validateCredentials('alice', 'short'), /密码/);
-});
+// The domain allowlist exists so a code lands in an inbox that actually
+// checks it, not to be a hurdle — but it does mean a real, valid address on
+// an unlisted provider is refused, and the test should say so plainly.
+for (const bad of ['me@some-random-domain.xyz', 'me@a-disposable-mail.com']) {
+  test(`拒绝不在白名单里的邮箱服务商 ${JSON.stringify(bad)}`, () => {
+    assert.throws(() => validateEmail(bad), /邮箱服务商/);
+  });
+}
 
-test('只校验用户名时可以不给密码', () => {
-  assert.equal(validateCredentials('alice', '', { requirePassword: false }), 'alice');
-});
+for (const good of ['a@163.com', 'a@126.com', 'a@outlook.com', 'a@hotmail.com', 'a@icloud.com', 'a@foxmail.com']) {
+  test(`接受主流邮箱服务商 ${JSON.stringify(good)}`, () => {
+    assert.equal(validateEmail(good), good);
+  });
+}
 
 // Codes are read off a screen and typed by hand, so case and stray spaces must
 // not decide whether a paid code works.

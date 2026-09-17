@@ -62,7 +62,7 @@ while (minted.length < count) {
   const code = newCode();
   if (db.codes[code]) continue;
   db.codes[code] = {
-    username: null, deviceId: null, createdAt: Date.now(), activatedAt: null,
+    email: null, deviceId: null, createdAt: Date.now(), activatedAt: null,
     plan, days: PLANS[plan], expiresAt: null
   };
   minted.push(code);

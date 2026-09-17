@@ -305,13 +305,16 @@
           <div><h3 id="accountWho"></h3></div>
           <div class="card-actions"><button class="secondary hidden" id="accountLogout" data-i18n="account.logout"></button></div>
         </div>
-        <div class="form-grid" id="accountForm">
-          <div><label data-i18n="account.username"></label><input class="field" id="accountUser" spellcheck="false" autocomplete="off"></div>
-          <div><label data-i18n="account.password"></label><input class="field" id="accountPass" type="password" autocomplete="off"></div>
-        </div>
-        <div class="modal-actions" id="accountFormActions">
-          <button class="secondary" id="accountRegister" data-i18n="account.register"></button>
-          <button class="primary" id="accountLogin" data-i18n="account.login"></button>
+        <div id="accountForm">
+          <label data-i18n="account.email"></label>
+          <div class="url-row">
+            <input class="field" id="accountEmail" spellcheck="false" autocomplete="off" inputmode="email" data-i18n-placeholder="account.emailPlaceholder">
+            <button class="secondary" id="accountSendCode" data-i18n="account.sendCode"></button>
+          </div>
+          <div class="url-row hidden" id="accountEmailCodeRow">
+            <input class="field" id="accountEmailCode" spellcheck="false" autocomplete="off" inputmode="numeric" maxlength="6" data-i18n-placeholder="account.codeInputPlaceholder">
+            <button class="primary" id="accountVerifyBtn" data-i18n="account.login"></button>
+          </div>
         </div>
       </section>
 

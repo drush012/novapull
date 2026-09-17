@@ -41,7 +41,7 @@ if (args[0] === '--list') {
     // worth rather than printing "永久" for an unused three-day card.
     const until = entry.expiresAt ? new Date(entry.expiresAt).toISOString().slice(0, 10)
       : entry.days ? `${entry.days}天(未起算)` : '永久';
-    return `${code}  ${state.padEnd(6)}  ${(entry.plan || '-').padEnd(8)}  ${until}  ${entry.username || '-'}`;
+    return `${code}  ${state.padEnd(6)}  ${(entry.plan || '-').padEnd(8)}  ${until}  ${entry.email || '-'}`;
   });
   console.log(rows.length ? rows.join('\n') : '库里没有激活码');
   process.exit(0);

@@ -79,11 +79,11 @@ const EN = {
 
   'faq.title': 'Frequently asked',
   'q1': 'How do I use an activation code?',
-  'a1': 'Open the app, click the blue “Sign in” at the top right, create a username, then enter the code under “Device activation”. Once activated the button shows your username, and the dialog shows how many days are left.',
+  'a1': 'Open the app, click the blue “Sign in” at the top right, sign in with a one-time email code (no password to set), then enter the activation code under “Device activation”. Once activated the button shows your email, and the dialog shows how many days are left.',
   'q2': 'What if I change computers or reinstall Windows?',
   'a2': 'A code is bound to this installation on this computer. Reinstalling the app on the same computer and entering the same code costs nothing. If you change computers or reinstall Windows, contact us to move it.',
   'q3': 'Do you collect my data?',
-  'a3': 'When you register or sign in, the server receives your username and password (sent over HTTPS; the server keeps only a hash of the password, never the password itself). When activating and re-checking on start, it receives the code and a random id the app generated on its first run. <strong>It reads no hardware information and records nothing about what you download</strong> — parsing and downloading happen entirely on your machine, out of the server’s sight. A computer that has never signed in never contacts our server at all.',
+  'a3': 'Signing in sends your email and a one-time code (no password — the code expires in 10 minutes and is never kept afterwards). When activating and re-checking on start, it receives the activation code and a random id the app generated on its first run. <strong>It reads no hardware information and records nothing about what you download</strong> — parsing and downloading happen entirely on your machine, out of the server’s sight. A computer that has never signed in never contacts our server at all.',
   'q4': 'Does it work offline?',
   'a4': 'An activated computer keeps working for 14 days without reaching the server, so a bad connection does not interrupt you. After 14 days it pauses, and resumes by itself once back online.',
   'q5': 'Why does YouTube sometimes stop at 1080p?',
@@ -96,13 +96,57 @@ const EN = {
   'foot.contact': 'Contact',
 
   'theme.light': 'Light',
-  'theme.dark': 'Dark'
+  'theme.dark': 'Dark',
+
+  'acct.button': 'Sign in',
+  'acct.title': 'My account',
+  'acct.email': 'Email',
+  'acct.emailPlaceholder': 'A mainstream address, e.g. QQ / 163 / Gmail',
+  'acct.sendCode': 'Send code',
+  'acct.resendIn': 'Resend ({seconds}s)',
+  'acct.codePlaceholder': '6-digit code',
+  'acct.login': 'Sign in',
+  'acct.logout': 'Sign out',
+  'acct.empty': 'No device has been activated yet',
+  'acct.working': 'Working…',
+  'acct.codeSent': 'Code sent — check your inbox',
+  'acct.loginFailed': 'Sign-in failed',
+  'acct.device': 'Device',
+  'acct.activated': 'Activated',
+  'acct.statusActive': 'Active',
+  'acct.statusRevoked': 'Revoked',
+  'acct.statusExpired': 'Expired',
+  'acct.daysLeft': '{days} days left',
+  'acct.forever': 'No expiry',
+  'plan.3d': '3-day pass',
+  'plan.month': 'Monthly',
+  'plan.quarter': 'Quarterly',
+  'plan.half': 'Half-year',
+  'plan.year': 'Yearly',
+  'plan.forever': 'Lifetime'
 };
 
-// Not sourced from any [data-i18n] node — the theme label is painted directly
-// by paintTheme(), the same way the app itself never lets the blanket
-// language sweep touch a value that a different piece of state also controls.
-const ZH_EXTRA = { 'theme.light': '浅色', 'theme.dark': '深色' };
+// Not sourced from any [data-i18n] node — these are painted directly from JS
+// (the theme label, and every string the user centre generates for dynamic
+// server data), the same way the app itself never lets the blanket language
+// sweep touch a value that a different piece of state also controls.
+const ZH_EXTRA = {
+  'theme.light': '浅色', 'theme.dark': '深色',
+  'acct.button': '登录',
+  'acct.resendIn': '重新发送（{seconds}s）',
+  'acct.working': '正在处理…',
+  'acct.codeSent': '验证码已发送，请查收邮件',
+  'acct.loginFailed': '登录失败',
+  'acct.device': '设备',
+  'acct.activated': '激活于',
+  'acct.statusActive': '生效中',
+  'acct.statusRevoked': '已吊销',
+  'acct.statusExpired': '已到期',
+  'acct.daysLeft': '剩余 {days} 天',
+  'acct.forever': '永久有效',
+  'plan.3d': '3 天体验', 'plan.month': '月卡', 'plan.quarter': '季卡',
+  'plan.half': '半年卡', 'plan.year': '年卡', 'plan.forever': '永久版'
+};
 
 /* -------------------------------------------------------------- behaviour */
 
@@ -116,7 +160,15 @@ for (const node of nodes) ZH[node.dataset.i18n] = node.innerHTML;
 for (const node of metaNodes) ZH[node.dataset.i18nContent] = node.getAttribute('content');
 
 let lang = root.getAttribute('data-lang') === 'en' ? 'en' : 'zh';
-const t = key => (lang === 'en' ? EN : ZH)[key] ?? ZH[key] ?? key;
+// Every static [data-i18n] string needed no variables until the account
+// section's countdowns and day counts arrived, so substitution was never
+// built — a call site passing vars was silently handed back the raw
+// "{seconds}" template.
+function t(key, vars) {
+  const text = (lang === 'en' ? EN : ZH)[key] ?? ZH[key] ?? key;
+  if (!vars) return text;
+  return text.replace(/\{(\w+)\}/g, (match, name) => (name in vars ? String(vars[name]) : match));
+}
 
 function apply() {
   // innerHTML is safe here: every string is this file's own constant or the
@@ -128,6 +180,11 @@ function apply() {
   document.getElementById('langToggle').textContent = lang === 'en' ? '中文' : 'EN';
   root.classList.remove('i18n-pending');
   paintTheme();
+  paintAcctButton();
+  // The activation list is built from server data, not [data-i18n] nodes, so
+  // the blanket sweep above never touches it — if the dashboard is open when
+  // the language changes, it has to be asked again explicitly.
+  if (!document.getElementById('acctSignedIn').classList.contains('hidden')) renderDashboard();
 }
 
 document.getElementById('langToggle').addEventListener('click', () => {
@@ -165,4 +222,188 @@ document.getElementById('themeToggle').addEventListener('click', () => {
   paintTheme();
 });
 
+/* -------------------------------------------------------------- account */
+
+// The same server the desktop app talks to — this page is a thin client over
+// the identical API, not a second implementation of any of it.
+const ACCOUNT_SERVER = 'https://pull.qike.ccwu.cc';
+const TOKEN_KEY = 'novapull.web.token';
+const EMAIL_KEY = 'novapull.web.email';
+
+function getToken() { try { return localStorage.getItem(TOKEN_KEY) || ''; } catch { return ''; } }
+function setToken(token) { try { token ? localStorage.setItem(TOKEN_KEY, token) : localStorage.removeItem(TOKEN_KEY); } catch { /* storage blocked */ } }
+function setSavedEmail(email) { try { email ? localStorage.setItem(EMAIL_KEY, email) : localStorage.removeItem(EMAIL_KEY); } catch { /* storage blocked */ } }
+function getSavedEmail() { try { return localStorage.getItem(EMAIL_KEY) || ''; } catch { return ''; } }
+
+async function api(path, { method = 'POST', body, auth = false } = {}) {
+  const headers = { 'Content-Type': 'application/json' };
+  if (auth) headers.Authorization = `Bearer ${getToken()}`;
+  const response = await fetch(`${ACCOUNT_SERVER}${path}`, {
+    method, headers, ...(body ? { body: JSON.stringify(body) } : {})
+  });
+  const text = await response.text();
+  let data = null;
+  try { data = text ? JSON.parse(text) : null; } catch { /* non-JSON error page */ }
+  if (!response.ok) throw new Error((data && data.message) || `HTTP ${response.status}`);
+  return data || {};
+}
+
+// The header chip mirrors the app's own toolbar button: plain text when
+// signed out, the email once signed in — and like the theme label, that
+// depends on account state as well as language, so apply()'s blanket sweep
+// must not own it. currentEmail is the single source of truth for the paint.
+let currentEmail = '';
+function paintAcctButton() {
+  document.getElementById('acctToggle').textContent = currentEmail || t('acct.button');
+}
+
+/** Validates the stored token, if any, and updates the header chip either way. */
+async function checkSession() {
+  const token = getToken();
+  if (!token) { currentEmail = ''; paintAcctButton(); return false; }
+  try {
+    const { user } = await api('/api/auth/me', { method: 'GET', auth: true });
+    currentEmail = user.email;
+    setSavedEmail(currentEmail);
+    paintAcctButton();
+    return true;
+  } catch {
+    setToken(''); setSavedEmail(''); currentEmail = '';
+    paintAcctButton();
+    return false;
+  }
+}
+
+function acctSay(message, isError) {
+  const box = document.getElementById('acctMsg');
+  box.textContent = message || '';
+  box.classList.toggle('hidden', !message);
+  box.classList.toggle('is-error', Boolean(isError));
+}
+
+const PLAN_LABEL = plan => (plan ? t(`plan.${plan}`) : '');
+
+function activationRow(item) {
+  const status = item.revoked ? { key: 'acct.statusRevoked', cls: 'off' }
+    : item.expired ? { key: 'acct.statusExpired', cls: 'off' }
+      : { key: 'acct.statusActive', cls: 'ok' };
+  const remaining = item.expiresAt
+    ? t('acct.daysLeft', { days: Math.max(0, Math.ceil((item.expiresAt - Date.now()) / 86400000)) })
+    : t('acct.forever');
+  const device = item.deviceId ? `${item.deviceId.slice(0, 8)}…` : '—';
+  const activatedDate = item.activatedAt ? new Date(item.activatedAt).toLocaleDateString() : '—';
+  const div = document.createElement('div');
+  div.className = 'acct-item';
+  div.innerHTML = `
+    <div class="row"><code>${item.code}</code><span class="badge ${status.cls}">${t(status.key)}</span></div>
+    <div class="row"><span>${PLAN_LABEL(item.plan)}</span><span>${remaining}</span></div>
+    <div class="row"><span>${t('acct.device')} ${device}</span><span>${t('acct.activated')} ${activatedDate}</span></div>
+  `;
+  return div;
+}
+
+async function renderDashboard() {
+  document.getElementById('acctUserEmail').textContent = getSavedEmail();
+  try {
+    const { activations } = await api('/api/account/activations', { method: 'GET', auth: true });
+    const list = document.getElementById('acctList');
+    list.replaceChildren(...activations.map(activationRow));
+    document.getElementById('acctEmptyNote').classList.toggle('hidden', activations.length > 0);
+  } catch (error) {
+    acctSay(error.message, true);
+  }
+}
+
+async function showSignedIn() {
+  document.getElementById('acctSignedOut').classList.add('hidden');
+  document.getElementById('acctSignedIn').classList.remove('hidden');
+  await renderDashboard();
+}
+
+function showSignedOut() {
+  document.getElementById('acctSignedIn').classList.add('hidden');
+  document.getElementById('acctSignedOut').classList.remove('hidden');
+}
+
+const ACCT_COOLDOWN_S = 60;
+let acctCooldownTimer = null;
+
+function paintAcctCooldown(secondsLeft) {
+  const button = document.getElementById('acctSendCode');
+  if (secondsLeft > 0) {
+    button.disabled = true;
+    button.textContent = t('acct.resendIn', { seconds: secondsLeft });
+  } else {
+    button.disabled = false;
+    button.textContent = t('acct.sendCode');
+  }
+}
+
+function startAcctCooldown() {
+  clearInterval(acctCooldownTimer);
+  let left = ACCT_COOLDOWN_S;
+  paintAcctCooldown(left);
+  acctCooldownTimer = setInterval(() => {
+    left -= 1;
+    paintAcctCooldown(left);
+    if (left <= 0) clearInterval(acctCooldownTimer);
+  }, 1000);
+}
+
+document.getElementById('acctToggle').addEventListener('click', async () => {
+  document.getElementById('acctOverlay').classList.remove('hidden');
+  acctSay('');
+  if (await checkSession()) await showSignedIn(); else showSignedOut();
+});
+
+document.getElementById('acctClose').addEventListener('click', () => document.getElementById('acctOverlay').classList.add('hidden'));
+document.getElementById('acctOverlay').addEventListener('click', event => {
+  if (event.target.id === 'acctOverlay') document.getElementById('acctOverlay').classList.add('hidden');
+});
+
+document.getElementById('acctSendCode').addEventListener('click', async () => {
+  const email = document.getElementById('acctEmail').value;
+  acctSay(t('acct.working'));
+  try {
+    await api('/api/auth/request-code', { body: { email, lang } });
+    document.getElementById('acctCodeRow').classList.remove('hidden');
+    startAcctCooldown();
+    acctSay(t('acct.codeSent'));
+  } catch (error) { acctSay(error.message, true); }
+});
+
+document.getElementById('acctVerify').addEventListener('click', async () => {
+  const email = document.getElementById('acctEmail').value;
+  const code = document.getElementById('acctCode').value;
+  acctSay(t('acct.working'));
+  try {
+    const data = await api('/api/auth/verify-code', { body: { email, code } });
+    setToken(data.token);
+    currentEmail = (data.user && data.user.email) || email;
+    setSavedEmail(currentEmail);
+    paintAcctButton();
+    document.getElementById('acctCode').value = '';
+    document.getElementById('acctCodeRow').classList.add('hidden');
+    clearInterval(acctCooldownTimer);
+    paintAcctCooldown(0);
+    acctSay('');
+    await showSignedIn();
+  } catch (error) { acctSay(error.message || t('acct.loginFailed'), true); }
+});
+
+document.getElementById('acctLogout').addEventListener('click', async () => {
+  await api('/api/auth/logout', { auth: true }).catch(() => {});
+  setToken(''); setSavedEmail(''); currentEmail = '';
+  paintAcctButton();
+  showSignedOut();
+});
+
+// Every declaration above must exist first: apply() paints the header chip via
+// paintAcctButton(), which reads currentEmail — calling it any earlier is a
+// temporal-dead-zone error, since that binding is declared further up in this
+// same section, not hoisted the way a function declaration would be.
 apply();
+
+// A stored token could be valid, so the header shows the right thing on
+// arrival instead of only after the visitor opens the dialog.
+checkSession();

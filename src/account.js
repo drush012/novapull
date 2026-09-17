@@ -10,11 +10,18 @@ const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
 const { app, net } = require('electron');
-const { t } = require('./i18n');
+const { t, getLanguage } = require('./i18n');
 
-const USERNAME = /^[A-Za-z0-9_]{3,20}$/;
-const MIN_PASSWORD = 8;
 const TIMEOUT_MS = 15000;
+
+// Mirrors the server's allowlist so a typo is caught before a round trip; the
+// server checks again regardless, since this copy could drift or be bypassed.
+const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+const ALLOWED_EMAIL_DOMAINS = new Set([
+  'qq.com', 'foxmail.com', 'vip.qq.com', '163.com', '126.com', 'yeah.net',
+  'sina.com', 'sina.cn', 'sohu.com', 'aliyun.com', '139.com', 'wo.cn', '189.cn',
+  'gmail.com', 'outlook.com', 'hotmail.com', 'live.com', 'yahoo.com', 'icloud.com', 'me.com'
+]);
 
 // The address shipped with the app: every user talks to the same server, so
 // nobody should have to know it exists. The settings field only overrides it.
@@ -25,15 +32,19 @@ function resolveServer(configured) {
   return String(configured || '').trim() || DEFAULT_SERVER;
 }
 
-function validateCredentials(username, password, { requirePassword = true } = {}) {
-  // Lower-cased so "Alice" and "alice" cannot become two accounts; the server
-  // folds the same way.
-  const account = String(username || '').trim().toLowerCase();
-  if (!USERNAME.test(account)) throw new Error(t('err.badUsername'));
-  if (requirePassword && String(password || '').length < MIN_PASSWORD) {
-    throw new Error(t('err.shortPassword', { min: MIN_PASSWORD }));
-  }
-  return account;
+function validateEmail(value) {
+  // Lower-cased so "Alice@QQ.com" and "alice@qq.com" cannot become two
+  // accounts; the server folds the same way.
+  const email = String(value || '').trim().toLowerCase();
+  if (!EMAIL_SHAPE.test(email)) throw new Error(t('err.badEmail'));
+  if (!ALLOWED_EMAIL_DOMAINS.has(email.split('@')[1])) throw new Error(t('err.unsupportedEmail'));
+  return email;
+}
+
+function normalizeCodeDigits(value) {
+  const digits = String(value || '').trim();
+  if (!/^\d{6}$/.test(digits)) throw new Error(t('err.badVerifyCode'));
+  return digits;
 }
 
 // The public half of the server's signing key (server/make-keys.js). It can
@@ -141,7 +152,6 @@ function publicState() {
     hasServer: Boolean(resolveServer(state.server)),
     signedIn: Boolean(state.token),
     user: state.user,
-    minPassword: MIN_PASSWORD,
     graceDays: GRACE_DAYS,
     activation: {
       active: Boolean(claims),
@@ -188,19 +198,19 @@ async function call(pathname, { method = 'POST', body, token } = {}) {
   return data || {};
 }
 
-async function register(username, password) {
-  const account = validateCredentials(username, password);
-  const data = await call('/api/auth/register', { body: { username: account, password } });
-  if (!data.token) throw new Error(t('err.noToken'));
-  writeState({ ...readState(), token: data.token, user: data.user || { username: account } });
-  return publicState();
+/** Sends a one-time code to the address. Cooldown and rate limits live server-side. */
+async function requestCode(email) {
+  const account = validateEmail(email);
+  await call('/api/auth/request-code', { body: { email: account, lang: getLanguage() } });
 }
 
-async function login(username, password) {
-  const account = validateCredentials(username, password);
-  const data = await call('/api/auth/login', { body: { username: account, password } });
+/** Verifying the code both signs in and creates the account on first use — there is no separate register step. */
+async function verifyCode(email, code) {
+  const account = validateEmail(email);
+  const digits = normalizeCodeDigits(code);
+  const data = await call('/api/auth/verify-code', { body: { email: account, code: digits } });
   if (!data.token) throw new Error(t('err.noToken'));
-  writeState({ ...readState(), token: data.token, user: data.user || { username: account } });
+  writeState({ ...readState(), token: data.token, user: data.user || { email: account } });
   return publicState();
 }
 
@@ -302,7 +312,7 @@ async function activationStatus() {
 }
 
 module.exports = {
-  validateCredentials,
+  validateEmail,
   normalizeServer,
   resolveServer,
   normalizeCode,
@@ -313,14 +323,13 @@ module.exports = {
   publicState,
   readState,
   writeState,
-  register,
-  login,
+  requestCode,
+  verifyCode,
   logout,
   refresh,
   setServer,
   activate,
   activationStatus,
-  MIN_PASSWORD,
   DEFAULT_SERVER,
   PUBLIC_KEY
 };

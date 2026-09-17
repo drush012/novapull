@@ -33,10 +33,45 @@
         <span id="themeLabel"></span>
       </button>
       <button class="lang" id="langToggle" type="button" aria-label="Language">EN</button>
+      <button class="theme" id="acctToggle" type="button"></button>
       <a class="btn btn-primary btn-sm" href="#download" data-i18n="nav.download">下载</a>
     </div>
   </div>
 </header>
+
+<!-- User centre: view-only for now — activation status, plan, days left,
+     bound device. No self-service rebind yet; that is a separate feature. -->
+<div class="acct-overlay hidden" id="acctOverlay">
+  <div class="acct-modal">
+    <div class="acct-head">
+      <h3 data-i18n="acct.title">我的账号</h3>
+      <button class="icon-btn" id="acctClose" aria-label="Close">×</button>
+    </div>
+
+    <div id="acctSignedOut">
+      <label data-i18n="acct.email">邮箱</label>
+      <div class="url-row">
+        <input id="acctEmail" spellcheck="false" autocomplete="off" inputmode="email" data-i18n-placeholder="acct.emailPlaceholder">
+        <button class="secondary" id="acctSendCode" data-i18n="acct.sendCode">获取验证码</button>
+      </div>
+      <div class="url-row hidden" id="acctCodeRow">
+        <input id="acctCode" spellcheck="false" autocomplete="off" inputmode="numeric" maxlength="6" data-i18n-placeholder="acct.codePlaceholder">
+        <button class="primary" id="acctVerify" data-i18n="acct.login">登录</button>
+      </div>
+    </div>
+
+    <div id="acctSignedIn" class="hidden">
+      <div class="acct-who">
+        <span id="acctUserEmail"></span>
+        <button class="secondary btn-sm" id="acctLogout" data-i18n="acct.logout">退出登录</button>
+      </div>
+      <p class="acct-empty hidden" id="acctEmptyNote" data-i18n="acct.empty">还没有激活任何设备</p>
+      <div id="acctList"></div>
+    </div>
+
+    <p class="acct-msg hidden" id="acctMsg"></p>
+  </div>
+</div>
 
 <main id="top">
 
@@ -239,7 +274,7 @@
 
       <details>
         <summary data-i18n="q1">激活码怎么用？</summary>
-        <p data-i18n="a1">打开软件，点右上角蓝色的「登录」，注册一个用户名，然后在「设备激活」里输入激活码。激活后按钮会变成你的用户名，弹窗里能看到剩余天数。</p>
+        <p data-i18n="a1">打开软件，点右上角蓝色的「登录」，输入邮箱获取验证码登录（无需设置密码），然后在「设备激活」里输入激活码。激活后按钮会变成你的邮箱，弹窗里能看到剩余天数。</p>
       </details>
       <details>
         <summary data-i18n="q2">换电脑或重装系统怎么办？</summary>
@@ -247,7 +282,7 @@
       </details>
       <details>
         <summary data-i18n="q3">会收集我的数据吗？</summary>
-        <p data-i18n="a3">注册和登录时，服务器收到你的用户名和密码（经 HTTPS 传输，服务器只保存密码的哈希，不存原文）；激活和启动复查时，收到激活码和软件首次运行时随机生成的一个编号。<strong>不读取任何硬件信息，也不记录你下载了什么</strong>——解析和下载完全在你本机进行，服务器看不到。从没登录过的电脑，完全不会连接我们的服务器。</p>
+        <p data-i18n="a3">登录时，服务器收到你的邮箱和一次性验证码（没有密码，验证码 10 分钟后失效，也不会存起来给下次用）；激活和启动复查时，收到激活码和软件首次运行时随机生成的一个编号。<strong>不读取任何硬件信息，也不记录你下载了什么</strong>——解析和下载完全在你本机进行，服务器看不到。从没登录过的电脑，完全不会连接我们的服务器。</p>
       </details>
       <details>
         <summary data-i18n="q4">没网的时候还能用吗？</summary>
