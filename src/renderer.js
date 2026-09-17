@@ -529,6 +529,107 @@ $('#updateSkip').onclick = () => {
 };
 $$('[data-close-update]').forEach(button => button.onclick = () => $('#updateModal').classList.add('hidden'));
 
+/* ---------------------------------------------------------------- account */
+
+// The renderer only ever holds what publicState() hands over: a name, whether
+// this device is activated, and how much of today's free allowance is left.
+// The bearer token stays in the main process.
+let accountInfo = null;
+
+function paintAccount() {
+  const info = accountInfo;
+  const signedIn = Boolean(info && info.signedIn);
+  const name = (info && info.user && info.user.username) || '';
+  $('#accountName').textContent = signedIn && name ? name : t('account.button');
+  // Filled while there is still something to do here, plain once the device is
+  // activated and the chip is only telling you who you are.
+  $('#btnAccount').classList.toggle('filled', !(info && info.activation && info.activation.active));
+  $('#accountWho').textContent = signedIn ? t('account.signedInAs', { name }) : t('account.signedOut');
+  $('#accountLogout').classList.toggle('hidden', !signedIn);
+  $('#accountForm').classList.toggle('hidden', signedIn);
+  $('#accountFormActions').classList.toggle('hidden', signedIn);
+
+  const active = Boolean(info && info.activation && info.activation.active);
+  const quota = (info && info.quota) || { limit: 0, remaining: 0 };
+  $('#accountActivationState').textContent = active ? t('account.active')
+    : quota.remaining > 0 ? t('account.inactive', { remaining: quota.remaining, limit: quota.limit })
+      : t('account.quotaGone');
+  $('#accountCodeRow').classList.toggle('hidden', active);
+
+  $('#accountServer').value = (info && info.server) || '';
+  // These carry a value from the dictionary, so they cannot be data-i18n-placeholder.
+  $('#accountUser').placeholder = t('account.usernamePlaceholder');
+  $('#accountPass').placeholder = t('account.passwordPlaceholder', { min: (info && info.minPassword) || 8 });
+  $('#accountCode').placeholder = t('account.codePlaceholder');
+}
+
+function accountSay(message, isError = false) {
+  const box = $('#accountState');
+  box.textContent = message || '';
+  box.classList.toggle('hidden', !message);
+  box.classList.toggle('is-error', Boolean(isError));
+}
+
+async function accountRun(action, successKey) {
+  accountSay(t('account.working'));
+  try {
+    accountInfo = await action();
+    accountSay(successKey ? t(successKey) : '');
+  } catch (error) {
+    accountSay(error.message, true);
+  }
+  paintAccount();
+}
+
+async function refreshAccount() {
+  try { accountInfo = await window.nova?.accountState(); } catch { accountInfo = null; }
+  paintAccount();
+}
+
+$('#btnAccount').onclick = async () => {
+  $('#accountModal').classList.remove('hidden');
+  accountSay('');
+  await refreshAccount();
+  // A stored sign-in can have expired and an activation can have been undone on
+  // the server, so both are re-checked on opening — silently, because an
+  // unreachable server is not a reason to shout at someone.
+  if (!accountInfo?.hasServer) return;
+  try {
+    accountInfo = await window.nova.accountRefresh();
+    if (accountInfo.activation.code) accountInfo = await window.nova.accountActivationStatus();
+    paintAccount();
+  } catch { /* offline: what is stored locally still stands */ }
+};
+
+const serverThen = action => async () => {
+  // Saved first: signing in or activating is meaningless until the address the
+  // request goes to is the one in the box.
+  await window.nova.accountSetServer($('#accountServer').value);
+  return action();
+};
+
+$('#accountLogin').onclick = () => accountRun(serverThen(async () => {
+  const state = await window.nova.accountLogin($('#accountUser').value, $('#accountPass').value);
+  $('#accountPass').value = '';
+  return state;
+}), 'account.loginOk');
+
+$('#accountRegister').onclick = () => accountRun(serverThen(async () => {
+  const state = await window.nova.accountRegister($('#accountUser').value, $('#accountPass').value);
+  $('#accountPass').value = '';
+  return state;
+}), 'account.registerOk');
+
+$('#accountLogout').onclick = () => accountRun(() => window.nova.accountLogout());
+
+$('#accountActivate').onclick = () => accountRun(serverThen(async () => {
+  const state = await window.nova.accountActivate($('#accountCode').value);
+  $('#accountCode').value = '';
+  return state;
+}), 'account.activateOk');
+
+$$('[data-close-account]').forEach(button => button.onclick = () => $('#accountModal').classList.add('hidden'));
+
 /* --------------------------------------------------------------- language */
 
 // Everything the dictionary owns is repainted from one place, so a language
@@ -541,6 +642,7 @@ function applyLanguage() {
   $('#langName').textContent = t('pref.language');
   $('#btnLang').title = t('pref.language.title');
   paintTheme();
+  paintAccount();
   renderTemplatePresets();
   renderTemplateVars();
   if (!$('#settingsModal').classList.contains('hidden')) renderTemplatePreview();
@@ -849,6 +951,7 @@ function paintEngineState() {
 if (window.nova) {
   renderSiteTiles();
   refreshExitIp();
+  refreshAccount();
   window.nova.setLanguage?.(getLanguage()).catch(() => {});
   autoCheckUpdate();
   window.nova.appInfo().then(info => {

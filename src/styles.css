@@ -129,6 +129,11 @@ button { cursor: pointer; }
 .pref:hover { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
 .pref .ic { width: 15px; height: 15px; color: var(--accent); }
 .pref:hover .ic { color: var(--accent); }
+/* Signing in and activating are things we want found, so that chip is filled
+   rather than outlined like the language and theme ones next to it. */
+.pref.filled { background: var(--accent); border-color: var(--accent); color: #fff; }
+.pref.filled:hover { background: var(--accent-hover); border-color: var(--accent-hover); color: #fff; }
+.pref.filled .ic, .pref.filled:hover .ic { color: #fff; }
 
 /* ---------- body ---------- */
 .body { display: grid; grid-template-columns: 168px 1fr; min-height: 0; }
@@ -260,6 +265,9 @@ tr.failed .bar i { background: var(--err); }
 .card-actions { display: flex; gap: 8px; flex: none; }
 .card h4 { margin: 16px 0 8px; font-size: 12px; color: var(--muted); font-weight: 600; }
 .field { width: 100%; border: 1px solid var(--line); background: var(--surface); border-radius: 8px; padding: 11px 13px; outline: none; font: inherit; color: var(--text); }
+/* The code box sits right under a .field showing the activation state, so it
+   matches that rather than the tighter .url-row input it inherits from. */
+#accountCodeRow input { border-radius: 8px; padding: 11px 13px; }
 input.field:focus { border-color: var(--accent); }
 .field.muted { color: var(--muted); background: var(--surface-soft); }
 .field.preview { display: flex; align-items: center; gap: 2px; flex-wrap: wrap; }

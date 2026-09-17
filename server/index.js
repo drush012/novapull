@@ -6,6 +6,9 @@
 // Passwords are stored only as scrypt hashes with a per-user salt. Tokens are
 // random bytes; there is no signing key to leak. Run it behind a TLS
 // terminator — over plain HTTP the password is readable on the wire.
+//
+// Activation codes are minted out of band with generate-codes.js; this server
+// only ever binds an existing code to the first device that redeems it.
 'use strict';
 
 const http = require('node:http');
@@ -19,19 +22,36 @@ const DATA_FILE = process.env.DATA_FILE || path.join(__dirname, 'data.json');
 const MAX_BODY = 4096;
 const MIN_PASSWORD = 8;
 const TOKEN_DAYS = 30;
-const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+const USERNAME = /^[A-Za-z0-9_]{3,20}$/;
 
 /* ------------------------------------------------------------- storage */
 
 function load() {
   try { return JSON.parse(fs.readFileSync(DATA_FILE, 'utf8')); }
-  catch { return { users: {}, tokens: {} }; }
+  catch { return { users: {}, tokens: {}, codes: {} }; }
 }
 
 let db = load();
+// Older data files predate activation codes.
+if (!db.codes) db.codes = {};
+
+// generate-codes.js writes straight to the data file, so codes minted while
+// this process is running are invisible to it — and the next save() would
+// overwrite them with the older in-memory copy. Adopting them before every
+// activation keeps minting safe without having to stop the server.
+function adoptNewCodes() {
+  let disk;
+  try { disk = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8')); }
+  catch { return; }
+  for (const [code, entry] of Object.entries((disk && disk.codes) || {})) {
+    if (!db.codes[code]) db.codes[code] = entry;
+  }
+}
 
 // Written via a temp file so a crash mid-write cannot truncate the database.
 function save() {
+  // Any write would otherwise overwrite codes minted since this process started.
+  adoptNewCodes();
   const temp = `${DATA_FILE}.tmp`;
   fs.writeFileSync(temp, JSON.stringify(db), { mode: 0o600 });
   fs.renameSync(temp, DATA_FILE);
@@ -54,9 +74,9 @@ function passwordMatches(password, user) {
 
 /* -------------------------------------------------------------- tokens */
 
-function issueToken(email) {
+function issueToken(username) {
   const token = crypto.randomBytes(32).toString('hex');
-  db.tokens[token] = { email, createdAt: Date.now() };
+  db.tokens[token] = { username, createdAt: Date.now() };
   return token;
 }
 
@@ -68,11 +88,11 @@ function userForToken(token) {
     save();
     return null;
   }
-  return db.users[entry.email] || null;
+  return db.users[entry.username] || null;
 }
 
 function publicUser(user) {
-  return { email: user.email, name: user.name || user.email.split('@')[0], createdAt: user.createdAt };
+  return { username: user.username, createdAt: user.createdAt };
 }
 
 /* --------------------------------------------------------- rate limit */
@@ -134,29 +154,29 @@ function clientIp(request) {
 
 async function register(request, response) {
   const body = await readBody(request);
-  const email = String(body.email || '').trim().toLowerCase();
+  const username = String(body.username || '').trim().toLowerCase();
   const password = String(body.password || '');
-  if (!EMAIL.test(email)) return send(response, 400, { message: '邮箱格式不正确' });
+  if (!USERNAME.test(username)) return send(response, 400, { message: '用户名需为 3-20 位字母、数字或下划线' });
   if (password.length < MIN_PASSWORD) return send(response, 400, { message: `密码至少 ${MIN_PASSWORD} 位` });
-  if (db.users[email]) return send(response, 409, { message: '该邮箱已注册' });
+  if (db.users[username]) return send(response, 409, { message: '该用户名已被注册' });
 
   const { salt, hash } = hashPassword(password);
-  db.users[email] = { email, salt, hash, createdAt: Date.now() };
-  const token = issueToken(email);
+  db.users[username] = { username, salt, hash, createdAt: Date.now() };
+  const token = issueToken(username);
   save();
-  send(response, 201, { token, user: publicUser(db.users[email]) });
+  send(response, 201, { token, user: publicUser(db.users[username]) });
 }
 
 async function login(request, response) {
   if (tooManyAttempts(clientIp(request))) return send(response, 429, { message: '尝试过于频繁，请稍后再试' });
   const body = await readBody(request);
-  const email = String(body.email || '').trim().toLowerCase();
+  const username = String(body.username || '').trim().toLowerCase();
   const password = String(body.password || '');
-  const user = db.users[email];
+  const user = db.users[username];
   // One message for both cases: revealing which half was wrong helps an
   // attacker enumerate accounts.
-  if (!user || !passwordMatches(password, user)) return send(response, 401, { message: '邮箱或密码不正确' });
-  const token = issueToken(email);
+  if (!user || !passwordMatches(password, user)) return send(response, 401, { message: '用户名或密码不正确' });
+  const token = issueToken(username);
   save();
   send(response, 200, { token, user: publicUser(user) });
 }
@@ -173,11 +193,53 @@ function logout(request, response) {
   send(response, 200, { ok: true });
 }
 
+/* --------------------------------------------------------- activation */
+
+// A code is spent on the first device that redeems it and stays bound to that
+// device and account. Redeeming the same pair again succeeds so a reinstall
+// does not cost the user their code; anything else is refused.
+async function redeemActivation(request, response) {
+  if (tooManyAttempts(clientIp(request))) return send(response, 429, { message: '尝试过于频繁，请稍后再试' });
+  const user = userForToken(bearer(request));
+  if (!user) return send(response, 401, { message: '请先登录再激活' });
+
+  const body = await readBody(request);
+  const code = String(body.code || '').trim().toUpperCase();
+  const deviceId = String(body.deviceId || '').trim();
+  if (!code || !deviceId) return send(response, 400, { message: '缺少激活码或设备标识' });
+
+  adoptNewCodes();
+  const entry = db.codes[code];
+  if (!entry) return send(response, 404, { message: '激活码不存在' });
+  if (entry.deviceId && entry.deviceId !== deviceId) return send(response, 409, { message: '该激活码已绑定其他设备' });
+  if (entry.username && entry.username !== user.username) return send(response, 409, { message: '该激活码已被其他账号使用' });
+
+  if (!entry.deviceId) {
+    entry.deviceId = deviceId;
+    entry.username = user.username;
+    entry.activatedAt = Date.now();
+    save();
+  }
+  send(response, 200, { ok: true, activatedAt: entry.activatedAt });
+}
+
+async function activationStatus(request, response) {
+  const body = await readBody(request);
+  const code = String(body.code || '').trim().toUpperCase();
+  const deviceId = String(body.deviceId || '').trim();
+  adoptNewCodes();
+  const entry = db.codes[code];
+  const active = Boolean(entry && deviceId && entry.deviceId === deviceId);
+  send(response, 200, { active, activatedAt: active ? entry.activatedAt : null });
+}
+
 const ROUTES = {
   'POST /api/auth/register': register,
   'POST /api/auth/login': login,
   'GET /api/auth/me': me,
   'POST /api/auth/logout': logout,
+  'POST /api/activation/redeem': redeemActivation,
+  'POST /api/activation/status': activationStatus,
   'GET /api/health': (_request, response) => send(response, 200, { ok: true, users: Object.keys(db.users).length })
 };
 

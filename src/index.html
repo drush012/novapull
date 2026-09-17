@@ -29,6 +29,7 @@
     <symbol id="ic-save" viewBox="0 0 24 24"><path d="M3 6.5A1.5 1.5 0 014.5 5H9l2 2.2h8.5A1.5 1.5 0 0121 8.7V18a1.5 1.5 0 01-1.5 1.5h-15A1.5 1.5 0 013 18z" stroke="currentColor" stroke-width="1.7" fill="none" stroke-linejoin="round"/></symbol>
     <symbol id="ic-update" viewBox="0 0 24 24"><path d="M12 3.6v9.2m0 0l-3.4-3.4M12 12.8l3.4-3.4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M4.2 15.4v2.6a2 2 0 002 2h11.6a2 2 0 002-2v-2.6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" fill="none"/></symbol>
     <symbol id="ic-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" stroke="currentColor" stroke-width="1.7" fill="none"/><path d="M3.5 12h17M12 3.5c2.3 2.4 3.4 5.3 3.4 8.5s-1.1 6.1-3.4 8.5c-2.3-2.4-3.4-5.3-3.4-8.5S9.7 5.9 12 3.5z" stroke="currentColor" stroke-width="1.7" fill="none"/></symbol>
+    <symbol id="ic-user" viewBox="0 0 24 24"><circle cx="12" cy="8.4" r="3.9" stroke="currentColor" stroke-width="1.7" fill="none"/><path d="M4.8 20c0-3.6 3.2-5.8 7.2-5.8s7.2 2.2 7.2 5.8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" fill="none"/></symbol>
     <symbol id="ic-moon" viewBox="0 0 24 24"><path d="M20 14.2A8.2 8.2 0 019.8 4 8.4 8.4 0 1020 14.2z" stroke="currentColor" stroke-width="1.7" fill="none" stroke-linejoin="round"/></symbol>
     <symbol id="ic-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.1" stroke="currentColor" stroke-width="1.7" fill="none"/><path d="M12 2.6v2.5M12 18.9v2.5M2.6 12h2.5M18.9 12h2.5M5.4 5.4l1.8 1.8M16.8 16.8l1.8 1.8M18.6 5.4l-1.8 1.8M7.2 16.8l-1.8 1.8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></symbol>
   </svg>
@@ -100,6 +101,9 @@
     <div class="grow"></div>
     <button class="pref badge hidden" id="btnUpdate">
       <svg class="ic"><use href="#ic-update"></use></svg><span data-i18n="update.badge"></span>
+    </button>
+    <button class="pref" id="btnAccount">
+      <svg class="ic"><use href="#ic-user"></use></svg><span id="accountName"></span>
     </button>
     <div class="pref-group">
       <button class="pref" id="btnLang">
@@ -279,6 +283,51 @@
         <button class="secondary" id="updateRecheck" data-i18n="update.recheck"></button>
         <button class="primary hidden" id="updateOpen" data-i18n="update.open"></button>
       </div>
+    </div>
+  </div>
+
+  <div class="modal hidden" id="accountModal">
+    <div class="modal-card">
+      <div class="modal-head"><h2 data-i18n="account.title"></h2><button class="icon-btn" data-close-account>×</button></div>
+
+      <!-- Hidden: the address ships with the app (account.js DEFAULT_SERVER) and
+           every user talks to the same server. Drop the "hidden" class to point
+           a build somewhere else, e.g. while testing against a local server. -->
+      <section class="card hidden" id="accountServerCard">
+        <div class="card-head">
+          <div><h3 data-i18n="account.server"></h3><p data-i18n="account.serverNote"></p></div>
+        </div>
+        <input class="field" id="accountServer" spellcheck="false" autocomplete="off" placeholder="https://example.com">
+      </section>
+
+      <section class="card">
+        <div class="card-head">
+          <div><h3 id="accountWho"></h3></div>
+          <div class="card-actions"><button class="secondary hidden" id="accountLogout" data-i18n="account.logout"></button></div>
+        </div>
+        <div class="form-grid" id="accountForm">
+          <div><label data-i18n="account.username"></label><input class="field" id="accountUser" spellcheck="false" autocomplete="off"></div>
+          <div><label data-i18n="account.password"></label><input class="field" id="accountPass" type="password" autocomplete="off"></div>
+        </div>
+        <div class="modal-actions" id="accountFormActions">
+          <button class="secondary" id="accountRegister" data-i18n="account.register"></button>
+          <button class="primary" id="accountLogin" data-i18n="account.login"></button>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="card-head">
+          <div><h3 data-i18n="account.activation"></h3><p data-i18n="account.activationNote"></p></div>
+        </div>
+        <div class="field" id="accountActivationState"></div>
+        <div class="url-row" id="accountCodeRow">
+          <input id="accountCode" spellcheck="false" autocomplete="off">
+          <button class="primary" id="accountActivate" data-i18n="account.activate"></button>
+        </div>
+      </section>
+
+      <p class="parse-state hidden" id="accountState"></p>
+      <div class="modal-actions"><button class="secondary" data-close-account data-i18n="action.close"></button></div>
     </div>
   </div>
 

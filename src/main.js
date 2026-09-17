@@ -10,6 +10,8 @@ const { sniffMedia } = require('./sniffer');
 const { probePageMedia } = require('./media-probe');
 const { t, setLanguage } = require('./i18n');
 const { normalizeFeed, parseRelease, isNewer, resolveFeed } = require('./update');
+const account = require('./account');
+const usage = require('./usage');
 
 // Sites where yt-dlp's own extractor is known to return a worse table than the
 // page's player does. For Douyin that gap is 720p+watermark versus 4K clean.
@@ -602,6 +604,12 @@ ipcMain.handle('start-download', async (event, task) => {
   const id = task.id;
   if (typeof id !== 'string' || !/^[a-zA-Z0-9-]{1,80}$/.test(id)) throw new Error(t('err.badTaskId'));
   if (jobs.has(id)) throw new Error(t('err.stillRunning'));
+  // An activated device downloads freely; anything else spends one of the
+  // day's free slots. Claimed before any work starts so a refused task never
+  // touches the network.
+  if (!account.publicState().activation.active && !usage.claim(id).allowed) {
+    throw new Error(t('err.dailyLimit', { limit: usage.FREE_DAILY_LIMIT }));
+  }
   const url = validateUrl(task.url);
   if (task.cookieMode === 'embedded') await ensureSiteCookies(url);
   if (task.formatId && !/^[a-zA-Z0-9_.-]+$/.test(task.formatId)) throw new Error(t('err.badFormat'));
@@ -761,6 +769,18 @@ ipcMain.handle('open-external', async (_event, target) => {
   await shell.openExternal(url.href);
   return true;
 });
+
+// Account and activation. Every handler answers with account.publicState(), so
+// the renderer never sees the bearer token.
+const withQuota = state => ({ ...state, quota: usage.state() });
+ipcMain.handle('account-state', () => withQuota(account.publicState()));
+ipcMain.handle('account-refresh', async () => withQuota(await account.refresh()));
+ipcMain.handle('account-set-server', (_event, value) => withQuota(account.setServer(value)));
+ipcMain.handle('account-register', async (_event, { username, password } = {}) => withQuota(await account.register(username, password)));
+ipcMain.handle('account-login', async (_event, { username, password } = {}) => withQuota(await account.login(username, password)));
+ipcMain.handle('account-logout', async () => withQuota(await account.logout()));
+ipcMain.handle('account-activate', async (_event, code) => withQuota(await account.activate(code)));
+ipcMain.handle('account-activation-status', async () => withQuota(await account.activationStatus()));
 
 ipcMain.handle('app-info', () => {
   const tools = ['yt-dlp', 'ffmpeg', 'ffprobe'].map(name => ({ name, path: resolveTool(name) }));
