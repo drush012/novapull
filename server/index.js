@@ -395,9 +395,47 @@ function myActivations(request, response) {
       activatedAt: entry.activatedAt,
       expiresAt: entry.expiresAt || null,
       revoked: Boolean(entry.revoked),
-      expired: expired(entry)
+      expired: expired(entry),
+      // null once eligible now, so the client never has to redo this math —
+      // just compare it to the current time, or show it as a countdown.
+      rebindAvailableAt: entry.lastRebindAt ? entry.lastRebindAt + REBIND_COOLDOWN_DAYS * 86400000 : null
     }));
   send(response, 200, { activations: list }, request);
+}
+
+// Changing computers is routine, not a support ticket — but a code that can be
+// freely re-pointed at a new device on demand is a code that can be shared
+// around a group chat one device at a time. The cooldown is what keeps
+// "I got a new laptop" from turning into "we take turns".
+const REBIND_COOLDOWN_DAYS = 90;
+
+// Clears the device binding so the same code can be redeemed fresh elsewhere.
+// The plan's clock is untouched — moving devices does not refund time, it only
+// continues the countdown that already started at first activation.
+async function rebindActivation(request, response) {
+  if (tooManyAttempts(clientIp(request))) return send(response, 429, { message: '尝试过于频繁，请稍后再试' }, request);
+  const user = userForToken(bearer(request));
+  if (!user) return send(response, 401, { message: '登录已失效，请重新登录' }, request);
+
+  const body = await readBody(request);
+  const code = String(body.code || '').trim().toUpperCase();
+  adoptNewCodes();
+  const entry = db.codes[code];
+  if (!entry || entry.email !== user.email) return send(response, 404, { message: '激活码不存在' }, request);
+  if (entry.revoked) return send(response, 403, { message: '该激活码已被吊销' }, request);
+  if (!entry.deviceId) return send(response, 400, { message: '这个激活码还没有绑定任何设备' }, request);
+  if (expired(entry)) return send(response, 403, { message: '该激活码已到期，换绑无法延长有效期' }, request);
+
+  const availableAt = entry.lastRebindAt ? entry.lastRebindAt + REBIND_COOLDOWN_DAYS * 86400000 : 0;
+  if (Date.now() < availableAt) {
+    const daysLeft = Math.ceil((availableAt - Date.now()) / 86400000);
+    return send(response, 429, { message: `每个激活码 ${REBIND_COOLDOWN_DAYS} 天只能换绑一次，还需等待 ${daysLeft} 天` }, request);
+  }
+
+  entry.deviceId = null;
+  entry.lastRebindAt = Date.now();
+  save();
+  send(response, 200, { ok: true }, request);
 }
 
 const ROUTES = {
@@ -407,6 +445,7 @@ const ROUTES = {
   'POST /api/auth/logout': logout,
   'POST /api/activation/redeem': redeemActivation,
   'POST /api/activation/status': activationStatus,
+  'POST /api/activation/rebind': rebindActivation,
   'GET /api/account/activations': myActivations,
   // "mail" and "signing" are here so a deployment that forgot a setup step is
   // obvious from outside rather than only in the log.

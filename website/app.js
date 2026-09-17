@@ -118,6 +118,10 @@ const EN = {
   'acct.statusExpired': 'Expired',
   'acct.daysLeft': '{days} days left',
   'acct.forever': 'No expiry',
+  'acct.rebind': 'Move to a new device',
+  'acct.rebindCooldown': 'Available again in {days} days',
+  'acct.rebindConfirm': 'The current device will lose activation immediately. Continue?',
+  'acct.rebindOk': 'Unbound — activate this code on the new device now',
   'plan.3d': '3-day pass',
   'plan.month': 'Monthly',
   'plan.quarter': 'Quarterly',
@@ -144,6 +148,10 @@ const ZH_EXTRA = {
   'acct.statusExpired': '已到期',
   'acct.daysLeft': '剩余 {days} 天',
   'acct.forever': '永久有效',
+  'acct.rebind': '换绑设备',
+  'acct.rebindCooldown': '{days} 天后可换绑',
+  'acct.rebindConfirm': '换绑后当前设备会立即失去激活状态，确定要换绑吗？',
+  'acct.rebindOk': '换绑成功，现在可以在新设备上用这个码激活',
   'plan.3d': '3 天体验', 'plan.month': '月卡', 'plan.quarter': '季卡',
   'plan.half': '半年卡', 'plan.year': '年卡', 'plan.forever': '永久版'
 };
@@ -299,7 +307,41 @@ function activationRow(item) {
     <div class="row"><span>${PLAN_LABEL(item.plan)}</span><span>${remaining}</span></div>
     <div class="row"><span>${t('acct.device')} ${device}</span><span>${t('acct.activated')} ${activatedDate}</span></div>
   `;
+
+  // Only a bound, live code has anything to unbind — a code already waiting
+  // for a device, revoked, or expired gets no button at all.
+  if (item.deviceId && !item.revoked && !item.expired) {
+    const cooldownLeft = item.rebindAvailableAt ? Math.ceil((item.rebindAvailableAt - Date.now()) / 86400000) : 0;
+    const row = document.createElement('div');
+    row.className = 'row acct-item-actions';
+    if (cooldownLeft > 0) {
+      row.innerHTML = `<span class="acct-cooldown">${t('acct.rebindCooldown', { days: cooldownLeft })}</span>`;
+    } else {
+      const button = document.createElement('button');
+      button.className = 'secondary btn-sm';
+      button.textContent = t('acct.rebind');
+      button.addEventListener('click', () => rebindCode(item.code, button));
+      row.appendChild(button);
+    }
+    div.appendChild(row);
+  }
   return div;
+}
+
+async function rebindCode(code, button) {
+  // This immediately kicks the device currently holding the code offline, so
+  // it is worth a confirmation rather than a single stray click undoing it.
+  if (!window.confirm(t('acct.rebindConfirm'))) return;
+  button.disabled = true;
+  acctSay(t('acct.working'));
+  try {
+    await api('/api/activation/rebind', { body: { code }, auth: true });
+    acctSay(t('acct.rebindOk'));
+    await renderDashboard();
+  } catch (error) {
+    acctSay(error.message, true);
+    button.disabled = false;
+  }
 }
 
 async function renderDashboard() {

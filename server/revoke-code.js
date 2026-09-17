@@ -36,7 +36,13 @@ if (!args.length || args.includes('--help')) {
 if (args[0] === '--list') {
   const rows = Object.entries(db.codes).map(([code, entry]) => {
     const overdue = entry.expiresAt && Date.now() > entry.expiresAt;
-    const state = entry.revoked ? '已吊销' : overdue ? '已到期' : entry.deviceId ? '已激活' : '未使用';
+    // A rebound code has deviceId cleared but activatedAt still set — that is
+    // not the same as never having been used, or it would look identical to a
+    // fresh unsold code in this list.
+    const state = entry.revoked ? '已吊销' : overdue ? '已到期'
+      : entry.deviceId ? '已激活'
+        : entry.activatedAt ? '待换绑'
+          : '未使用';
     // A timed code has no end date until it is redeemed, so say what it is
     // worth rather than printing "永久" for an unused three-day card.
     const until = entry.expiresAt ? new Date(entry.expiresAt).toISOString().slice(0, 10)

@@ -337,3 +337,5 @@ details strong { color: var(--text); }
 .acct-item .badge { font-weight: 650; }
 .acct-item .badge.ok { color: var(--good); }
 .acct-item .badge.off { color: #d84343; }
+.acct-item-actions { justify-content: flex-end; margin-top: 10px; }
+.acct-cooldown { font-size: 13px; color: var(--muted); }
