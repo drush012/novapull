@@ -15,7 +15,7 @@ Module._load = function (request, ...rest) {
 };
 const {
   validateCredentials, normalizeServer, resolveServer, normalizeCode, deviceId,
-  verifyLicence, MIN_PASSWORD, DEFAULT_SERVER, GRACE_DAYS
+  verifyLicence, MIN_PASSWORD, DEFAULT_SERVER, GRACE_DAYS, PUBLIC_KEY
 } = require('../src/account');
 Module._load = originalLoad;
 
@@ -95,6 +95,16 @@ test('留空时用内置地址，填了就用填的', () => {
 // shipped an http:// one would put both on the wire in the clear.
 test('内置账号服务器地址是 https', () => {
   assert.match(DEFAULT_SERVER, /^https:\/\//);
+});
+
+// Shipping a build with no public key would leave every activated user at the
+// free daily limit, because nothing could ever verify.
+test('内置公钥存在且是一把能用的 Ed25519 公钥', () => {
+  assert.ok(PUBLIC_KEY, 'PUBLIC_KEY 不能为空，否则所有激活都验不过');
+  const key = crypto.createPublicKey({
+    key: Buffer.from(PUBLIC_KEY, 'base64'), format: 'der', type: 'spki'
+  });
+  assert.equal(key.asymmetricKeyType, 'ed25519');
 });
 
 test('接受正常用户名并转成小写', () => {

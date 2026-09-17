@@ -42,7 +42,7 @@ function validateCredentials(username, password, { requirePassword = true } = {}
 // What this buys: the activation state is no longer a boolean in a file anyone
 // can edit. Writing {"active":true} into account.json now proves nothing —
 // without the server's signature the app does not believe it.
-const PUBLIC_KEY = '';
+const PUBLIC_KEY = 'MCowBQYDK2VwAyEAecIrb31IEGRdjhWU1qnz1Lc+BLkOES2dwOJL38iE2sc=';
 
 // How long an activation stands without the server confirming it. Long enough
 // that a bad week of connectivity goes unnoticed, short enough that staying
@@ -321,5 +321,6 @@ module.exports = {
   activate,
   activationStatus,
   MIN_PASSWORD,
-  DEFAULT_SERVER
+  DEFAULT_SERVER,
+  PUBLIC_KEY
 };
