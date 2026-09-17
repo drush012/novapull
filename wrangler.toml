@@ -1,0 +1,7 @@
+# Deploys website/ as a static site via Cloudflare Workers' static-assets
+# feature — no server code, just the files in that folder served as-is.
+name = "novapull"
+compatibility_date = "2026-09-17"
+
+[assets]
+directory = "website"
