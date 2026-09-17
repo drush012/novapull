@@ -203,6 +203,37 @@ function expired(entry) {
   return Boolean(entry && entry.expiresAt && Date.now() > entry.expiresAt);
 }
 
+// The private half of the pair made by make-keys.js. Without it the server
+// still runs — it just cannot issue licences, and says so loudly, because a
+// deployment that silently stopped signing would leave every client inactive
+// with no clue why.
+const KEY_FILE = process.env.KEY_FILE || path.join(path.dirname(DATA_FILE), 'signing-key.pem');
+let signingKey = null;
+try {
+  signingKey = crypto.createPrivateKey(fs.readFileSync(KEY_FILE, 'utf8'));
+} catch {
+  console.error(`!! 找不到签名私钥 ${KEY_FILE}，无法签发激活凭证。先跑 node server/make-keys.js`);
+}
+
+/**
+ * A licence the app can check on its own: the claims, plus a signature only
+ * this server can produce. issuedAt is what stops an old one being kept
+ * forever — the app refuses one that has gone stale.
+ */
+function issueLicence(code, entry) {
+  if (!signingKey) return '';
+  const payload = Buffer.from(JSON.stringify({
+    code,
+    deviceId: entry.deviceId,
+    plan: entry.plan || null,
+    activatedAt: entry.activatedAt,
+    expiresAt: entry.expiresAt || null,
+    issuedAt: Date.now()
+  }));
+  const signature = crypto.sign(null, payload, signingKey);
+  return `${payload.toString('base64url')}.${signature.toString('base64url')}`;
+}
+
 // A code is spent on the first device that redeems it and stays bound to that
 // device and account. Redeeming the same pair again succeeds so a reinstall
 // does not cost the user their code; anything else is refused.
@@ -233,7 +264,10 @@ async function redeemActivation(request, response) {
   } else if (expired(entry)) {
     return send(response, 403, { message: '该激活码已到期' });
   }
-  send(response, 200, { ok: true, activatedAt: entry.activatedAt, expiresAt: entry.expiresAt || null, plan: entry.plan || null });
+  send(response, 200, {
+    ok: true, activatedAt: entry.activatedAt, expiresAt: entry.expiresAt || null,
+    plan: entry.plan || null, licence: issueLicence(code, entry)
+  });
 }
 
 async function activationStatus(request, response) {
@@ -247,13 +281,17 @@ async function activationStatus(request, response) {
   const isExpired = bound && expired(entry);
   // Why it is off travels with the answer, so the app can explain itself rather
   // than just going quiet.
+  const active = bound && !revoked && !isExpired;
   send(response, 200, {
-    active: bound && !revoked && !isExpired,
+    active,
     revoked: bound && revoked,
     expired: isExpired,
     plan: bound ? entry.plan || null : null,
     expiresAt: bound ? entry.expiresAt || null : null,
-    activatedAt: bound ? entry.activatedAt : null
+    activatedAt: bound ? entry.activatedAt : null,
+    // Re-issued on every check, which is what refreshes issuedAt and keeps a
+    // working device working. A revoked one simply stops being handed a new one.
+    licence: active ? issueLicence(code, entry) : ''
   });
 }
 
@@ -264,7 +302,9 @@ const ROUTES = {
   'POST /api/auth/logout': logout,
   'POST /api/activation/redeem': redeemActivation,
   'POST /api/activation/status': activationStatus,
-  'GET /api/health': (_request, response) => send(response, 200, { ok: true, users: Object.keys(db.users).length })
+  // "signing" is here so a deployment that forgot make-keys.js is obvious from
+  // outside rather than only in the log.
+  'GET /api/health': (_request, response) => send(response, 200, { ok: true, users: Object.keys(db.users).length, signing: Boolean(signingKey) })
 };
 
 const server = http.createServer(async (request, response) => {

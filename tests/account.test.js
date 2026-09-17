@@ -15,42 +15,72 @@ Module._load = function (request, ...rest) {
 };
 const {
   validateCredentials, normalizeServer, resolveServer, normalizeCode, deviceId,
-  withinGrace, MIN_PASSWORD, DEFAULT_SERVER, GRACE_DAYS
+  verifyLicence, MIN_PASSWORD, DEFAULT_SERVER, GRACE_DAYS
 } = require('../src/account');
 Module._load = originalLoad;
 
+const crypto = require('node:crypto');
 const DAY = 86400000;
 const NOW = Date.UTC(2026, 8, 17);
+const DEVICE = 'device-aaa';
 
-// Revoking a code is worth nothing if a device can simply stay offline and keep
-// the last "yes" forever, so a stored activation expires without confirmation.
-test('联网确认过的激活在宽限期内仍然有效', () => {
-  assert.equal(withinGrace({ active: true, verifiedAt: NOW - 3 * DAY }, NOW), true);
+// A stand-in for the server's key: the app is given only the public half, so
+// these tests exercise exactly what a user's machine can do.
+const pair = crypto.generateKeyPairSync('ed25519');
+const publicKey = pair.publicKey.export({ type: 'spki', format: 'der' }).toString('base64');
+const otherKey = crypto.generateKeyPairSync('ed25519').privateKey;
+
+function sign(claims, key = pair.privateKey) {
+  const body = Buffer.from(JSON.stringify({
+    code: 'ABCD', deviceId: DEVICE, plan: 'month',
+    activatedAt: NOW - DAY, expiresAt: NOW + 29 * DAY, issuedAt: NOW, ...claims
+  }));
+  return `${body.toString('base64url')}.${crypto.sign(null, body, key).toString('base64url')}`;
+}
+const check = (licence, opts = {}) => verifyLicence(licence, DEVICE, { now: NOW, publicKey, ...opts });
+
+test('服务端签发的凭证验证通过', () => {
+  assert.equal(check(sign({})).plan, 'month');
 });
 
-test('超过宽限期未确认的激活失效', () => {
-  assert.equal(withinGrace({ active: true, verifiedAt: NOW - (GRACE_DAYS + 1) * DAY }, NOW), false);
+// This is the bypass the signature exists to close: before it, writing
+// {"active":true} into account.json was enough.
+test('没有签名的伪造状态一律不认', () => {
+  for (const forged of ['', 'true', '{"active":true}', 'not.alicence', 'a.b.c', null, undefined, 42]) {
+    assert.equal(check(forged), null, `不该接受 ${JSON.stringify(forged)}`);
+  }
 });
 
-test('没有确认时间时退回激活时间计算', () => {
-  assert.equal(withinGrace({ active: true, activatedAt: NOW - DAY }, NOW), true);
-  assert.equal(withinGrace({ active: true, activatedAt: NOW - 30 * DAY }, NOW), false);
+test('改过内容的凭证验不过', () => {
+  const licence = sign({ expiresAt: NOW + DAY });
+  const [body, signature] = licence.split('.');
+  const claims = JSON.parse(Buffer.from(body, 'base64url').toString('utf8'));
+  claims.expiresAt = NOW + 9999 * DAY;               // 自己把有效期改长
+  const tampered = `${Buffer.from(JSON.stringify(claims)).toString('base64url')}.${signature}`;
+  assert.equal(check(tampered), null);
 });
 
-// Otherwise unplugging the network would stretch a 3-day plan to 17.
-test('套餐到期后不吃宽限期', () => {
-  assert.equal(withinGrace({ active: true, verifiedAt: NOW, expiresAt: NOW - 1 }, NOW), false);
-  assert.equal(withinGrace({ active: true, verifiedAt: NOW, expiresAt: NOW + DAY }, NOW), true);
+test('别人用自己的密钥签的凭证不认', () => {
+  assert.equal(check(sign({}, otherKey)), null);
 });
 
-test('永久码没有到期时间，宽限期照常', () => {
-  assert.equal(withinGrace({ active: true, verifiedAt: NOW - DAY, expiresAt: null }, NOW), true);
+// Copying account.json to a second machine must not carry the activation with
+// it: the claims name one device.
+test('凭证换一台设备就失效', () => {
+  assert.equal(verifyLicence(sign({}), 'device-bbb', { now: NOW, publicKey }), null);
 });
 
-test('本来就没激活的不会因为宽限期变成有效', () => {
-  assert.equal(withinGrace({ active: false, verifiedAt: NOW }, NOW), false);
-  assert.equal(withinGrace(null, NOW), false);
-  assert.equal(withinGrace({ active: true }, NOW), false, '没有任何时间戳不能算数');
+test('套餐到期的凭证失效，永久凭证不受影响', () => {
+  assert.equal(check(sign({ expiresAt: NOW - 1 })), null);
+  assert.ok(check(sign({ expiresAt: null })), '永久凭证没有到期时间');
+});
+
+// Keeps staying offline from outliving a revoked code: the licence is only
+// good for as long as the server's last confirmation stands.
+test('签发时间过旧的凭证失效', () => {
+  assert.ok(check(sign({ issuedAt: NOW - (GRACE_DAYS - 1) * DAY })), '宽限期内仍然有效');
+  assert.equal(check(sign({ issuedAt: NOW - (GRACE_DAYS + 1) * DAY })), null);
+  assert.equal(check(sign({ issuedAt: 0 })), null, '没有签发时间不能算数');
 });
 
 // The address ships with the app so users never see the field; what they type

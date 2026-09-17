@@ -36,20 +36,45 @@ function validateCredentials(username, password, { requirePassword = true } = {}
   return account;
 }
 
+// The public half of the server's signing key (server/make-keys.js). It can
+// only check a licence, never mint one, so shipping it to every user is safe.
+//
+// What this buys: the activation state is no longer a boolean in a file anyone
+// can edit. Writing {"active":true} into account.json now proves nothing —
+// without the server's signature the app does not believe it.
+const PUBLIC_KEY = '';
+
 // How long an activation stands without the server confirming it. Long enough
 // that a bad week of connectivity goes unnoticed, short enough that staying
 // offline is not a way to outlive a revoked code.
 const GRACE_DAYS = 14;
 
-/** Whether a stored activation still counts while the server cannot be reached. */
-function withinGrace(activation, now = Date.now()) {
-  if (!activation || !activation.active) return false;
-  // A plan that ran out is over whether or not the server can be reached —
-  // otherwise pulling the network cable would extend every short plan by the
-  // whole grace window.
-  if (activation.expiresAt && now > Number(activation.expiresAt)) return false;
-  const last = Number(activation.verifiedAt || activation.activatedAt || 0);
-  return last > 0 && now - last < GRACE_DAYS * 86400000;
+/**
+ * Checks a licence the server issued: the signature must be ours, the claims
+ * must be about this device, the plan must not have run out, and the server
+ * must have confirmed it recently enough. Returns the claims, or null.
+ *
+ * Every branch fails closed — an unreadable licence is not an active one.
+ */
+function verifyLicence(licence, id, { now = Date.now(), publicKey = PUBLIC_KEY } = {}) {
+  if (!publicKey || typeof licence !== 'string') return null;
+  const [body, signature] = licence.split('.');
+  if (!body || !signature) return null;
+  let payload;
+  try {
+    const data = Buffer.from(body, 'base64url');
+    const key = crypto.createPublicKey({
+      key: Buffer.from(publicKey, 'base64'), format: 'der', type: 'spki'
+    });
+    if (!crypto.verify(null, data, key, Buffer.from(signature, 'base64url'))) return null;
+    payload = JSON.parse(data.toString('utf8'));
+  } catch { return null; }
+
+  if (payload.deviceId !== id) return null;
+  if (payload.expiresAt && now > Number(payload.expiresAt)) return null;
+  const issued = Number(payload.issuedAt || 0);
+  if (!issued || now - issued > GRACE_DAYS * 86400000) return null;
+  return payload;
 }
 
 function normalizeCode(value) {
@@ -106,6 +131,9 @@ function writeState(state) {
 /** What the renderer needs to draw the header: never includes the token. */
 function publicState() {
   const state = readState();
+  // Everything shown about the activation comes from the verified licence, so
+  // the window cannot be made to say "activated" by editing the file either.
+  const claims = state.activation && verifyLicence(state.activation.licence, state.activation.deviceId);
   return {
     // The stored override, which is normally empty, plus whether anything at
     // all is configured once the built-in address is taken into account.
@@ -116,15 +144,18 @@ function publicState() {
     minPassword: MIN_PASSWORD,
     graceDays: GRACE_DAYS,
     activation: {
-      active: Boolean(state.activation && state.activation.active),
+      active: Boolean(claims),
       code: (state.activation && state.activation.code) || '',
-      activatedAt: (state.activation && state.activation.activatedAt) || 0,
-      plan: (state.activation && state.activation.plan) || null,
-      expiresAt: (state.activation && state.activation.expiresAt) || null,
+      activatedAt: (claims && claims.activatedAt) || 0,
+      plan: (claims && claims.plan) || null,
+      expiresAt: (claims && claims.expiresAt) || null,
       // Why it is off, so the app can explain rather than just stop working.
+      // A licence that no longer verifies while one is stored means the app has
+      // been away from the server too long.
       revoked: Boolean(state.activation && state.activation.revoked),
       expired: Boolean(state.activation && state.activation.expired),
-      stale: Boolean(state.activation && state.activation.stale)
+      stale: Boolean(!claims && state.activation && state.activation.licence
+        && !(state.activation.revoked || state.activation.expired))
     }
   };
 }
@@ -213,13 +244,13 @@ function setServer(value) {
 }
 
 /**
- * What the download gate asks. Checked locally against the stored expiry too,
- * so a plan that ran out stops at once even with no network to confirm it.
+ * What the download gate asks. The answer comes from the signed licence, not
+ * from anything the local file merely claims, so editing account.json by hand
+ * gets nobody anywhere.
  */
 function isActive(now = Date.now()) {
   const { activation } = readState();
-  if (!activation || !activation.active) return false;
-  return !(activation.expiresAt && now > Number(activation.expiresAt));
+  return Boolean(activation && verifyLicence(activation.licence, activation.deviceId, { now }));
 }
 
 /** Spends a code on this device. The server refuses one already bound elsewhere. */
@@ -231,11 +262,7 @@ async function activate(code) {
   const data = await call('/api/activation/redeem', { body: { code: value, deviceId: id }, token: state.token });
   writeState({
     ...state,
-    activation: {
-      code: value, deviceId: id, active: true,
-      activatedAt: data.activatedAt || Date.now(), verifiedAt: Date.now(),
-      plan: data.plan || null, expiresAt: data.expiresAt || null
-    }
+    activation: { code: value, deviceId: id, licence: data.licence || '' }
   });
   return publicState();
 }
@@ -260,20 +287,16 @@ async function activationStatus() {
       ...state,
       activation: {
         ...state.activation,
-        active: Boolean(data.active),
+        // A refused check hands back no licence, so the old one is dropped and
+        // the device goes inactive at once rather than at the end of the grace.
+        licence: data.active ? data.licence || '' : '',
         revoked: Boolean(data.revoked),
-        expired: Boolean(data.expired),
-        plan: data.plan || null,
-        expiresAt: data.expiresAt || null,
-        verifiedAt: Date.now(),
-        stale: false
+        expired: Boolean(data.expired)
       }
     });
   } catch {
-    // Offline: keep the stored answer only while it is still fresh enough.
-    if (!withinGrace(state.activation)) {
-      writeState({ ...state, activation: { ...state.activation, active: false, stale: true } });
-    }
+    // Offline: leave the stored licence alone. It carries its own issuedAt, so
+    // it stops verifying by itself once it has gone stale.
   }
   return publicState();
 }
@@ -283,7 +306,7 @@ module.exports = {
   normalizeServer,
   resolveServer,
   normalizeCode,
-  withinGrace,
+  verifyLicence,
   isActive,
   deviceId,
   GRACE_DAYS,
