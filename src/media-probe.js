@@ -77,7 +77,19 @@ const EXTRACT = `(() => {
   try { duration = Math.round((player && player.duration) || 0); } catch (error) { /* ignore */ }
   // The player reports 0 until playback starts; the variant entries carry it.
   if (!duration) duration = Math.round(durationSeen);
-  return { video, audio, duration, title: document.title || '' };
+  // The page-probe branch used to return no cover, so its result card showed a
+  // broken image. og:image is the reliable one on Douyin; the video's own
+  // poster and the player config's cover fields are fallbacks.
+  let poster = '';
+  try {
+    const og = document.querySelector('meta[property="og:image"]');
+    const videoEl = document.querySelector('video[poster]');
+    const cfg = (player && (player.config || player.videoConfig)) || {};
+    poster = (og && og.content)
+      || (videoEl && videoEl.getAttribute('poster'))
+      || cfg.cover || cfg.poster || cfg.coverUrl || cfg.dynamicCover || '';
+  } catch (error) { /* leave poster empty */ }
+  return { video, audio, duration, title: document.title || '', poster: String(poster || '') };
 })()`;
 
 function dedupe(items, keyOf) {
@@ -102,7 +114,7 @@ function qualityLabel(variant) {
  * Loads `url` in a hidden window and returns what the page's player offers.
  * Resolves with { title, duration, video: [...], audio: [...] }.
  */
-async function probePageMedia(url, { partition, timeoutMs = 45000, pollMs = 1000, settleMs = 6000 } = {}) {
+async function probePageMedia(url, { partition, timeoutMs = 45000, pollMs = 300, settleMs = 3000 } = {}) {
   const win = new BrowserWindow({
     // A realistic viewport: some players pick their variant table by size.
     width: 1600,
@@ -116,6 +128,9 @@ async function probePageMedia(url, { partition, timeoutMs = 45000, pollMs = 1000
       backgroundThrottling: false
     }
   });
+  // The page behind this window autoplays with sound; the window is only
+  // ever read from, never shown, so nothing should come out of the speakers.
+  win.webContents.setAudioMuted(true);
   const isWeb = target => /^https?:\/\//i.test(target);
   win.webContents.setWindowOpenHandler(({ url: target }) => (isWeb(target) ? { action: 'allow' } : { action: 'deny' }));
   const blockScheme = (event, target) => { if (!isWeb(target)) event.preventDefault(); };
@@ -127,12 +142,16 @@ async function probePageMedia(url, { partition, timeoutMs = 45000, pollMs = 1000
     win.loadURL(url).catch(() => { /* A partial load can still build the player. */ });
     const deadline = Date.now() + timeoutMs;
     let found = { video: [], audio: [], duration: 0, title: '' };
+    // The cover often lands in the <head> before any variant does, so it is
+    // kept as soon as it appears rather than only when the variant list grows.
+    let poster = '';
     let lastGrowth = Date.now();
     while (Date.now() < deadline) {
       await new Promise(resolve => setTimeout(resolve, pollMs));
       if (win.isDestroyed()) break;
       const snapshot = await win.webContents.executeJavaScript(EXTRACT).catch(() => null);
       if (!snapshot) continue;
+      if (!poster && snapshot.poster) poster = snapshot.poster;
       if (snapshot.video.length > found.video.length || snapshot.audio.length > found.audio.length) {
         found = snapshot;
         lastGrowth = Date.now();
@@ -158,6 +177,7 @@ async function probePageMedia(url, { partition, timeoutMs = 45000, pollMs = 1000
     return {
       title: (found.title || '').replace(/\s*-\s*抖音$/, '').trim(),
       duration: found.duration || 0,
+      poster,
       video,
       audio
     };

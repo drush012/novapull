@@ -55,6 +55,11 @@
 html, body { height: 100%; }
 body {
   margin: 0;
+  /* Everything downstream is sized in px; one zoom scales the whole UI up
+     proportionally rather than touching forty individual rules. The native
+     title-bar overlay height in main.js is kept in step with the scaled
+     first grid row so the window buttons stay aligned. */
+  zoom: 1.12;
   font: 13px/1.5 "Segoe UI", "Microsoft YaHei", sans-serif;
   color: var(--text);
   background: var(--bg);
