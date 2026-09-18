@@ -1,0 +1,22 @@
+---
+import { UI, NOVAPULL_SITE, type Lang } from '../consts';
+interface Props { lang: Lang; }
+const { lang } = Astro.props;
+const t = UI[lang];
+const year = new Date().getFullYear();
+---
+<footer class="site-footer">
+  <div class="wrap">
+    <div class="cta">
+      <h3>{t.ctaTitle}</h3>
+      <p>{t.ctaText}</p>
+      <a class="cta-btn" href={NOVAPULL_SITE} rel="noopener">{t.ctaButton}</a>
+    </div>
+    <div class="foot-links">
+      <a href={`/${lang}/`}>{t.nav.home}</a>
+      <a href={`/${lang}/about/`}>{t.nav.about}</a>
+      <a href={`/${lang}/privacy/`}>{t.privacy}</a>
+    </div>
+    <p class="copyright">© {year} {t.siteName}</p>
+  </div>
+</footer>

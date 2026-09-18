@@ -1,0 +1,42 @@
+---
+import Base from '../../layouts/Base.astro';
+import { LANGS, UI, SITE, type Lang } from '../../consts';
+
+export async function getStaticPaths() {
+  return LANGS.map(lang => ({ params: { lang } }));
+}
+const lang = Astro.params.lang as Lang;
+const t = UI[lang];
+
+// AdSense requires a privacy policy that discloses third-party cookie use
+// (Google's included) and links out to ad-settings. This copy is a plain,
+// accurate disclosure for a static content blog that shows Google ads.
+const body = {
+  zh: {
+    title: '隐私政策',
+    sections: [
+      ['我们收集什么', '本站是一个静态内容博客，本身不要求你注册、不主动收集你的个人信息。基础的匿名访问统计（如页面浏览量）可能通过第三方分析服务产生。'],
+      ['Cookie 与第三方广告', `本站使用 Google AdSense 展示广告。Google 及其合作伙伴可能使用 Cookie，根据你此前对本站及其他网站的访问来投放广告。你可以在 Google 的广告设置中管理个性化广告：https://www.google.com/settings/ads 。`],
+      ['第三方链接', '文章中可能包含指向第三方网站的链接，这些网站有各自的隐私政策，本站不对其内容负责。'],
+      ['联系方式', `如对本隐私政策有疑问，可通过 ${SITE.domain} 页面底部的方式联系我们。`]
+    ]
+  },
+  en: {
+    title: 'Privacy Policy',
+    sections: [
+      ['What we collect', 'This is a static content blog. It does not ask you to register and does not actively collect your personal information. Basic anonymous usage statistics (such as page views) may be produced by a third-party analytics service.'],
+      ['Cookies and third-party ads', 'This site uses Google AdSense to show ads. Google and its partners may use cookies to serve ads based on your prior visits to this and other sites. You can manage personalized advertising in Google Ad Settings: https://www.google.com/settings/ads .'],
+      ['Third-party links', 'Articles may link to third-party websites that have their own privacy policies; this site is not responsible for their content.'],
+      ['Contact', `For questions about this policy, reach us via the links in the footer of ${SITE.domain}.`]
+    ]
+  }
+}[lang];
+---
+<Base title={`${body.title} · ${t.siteName}`} description={body.title} lang={lang}>
+  <article class="post">
+    <h1>{body.title}</h1>
+    <div class="prose">
+      {body.sections.map(([h, p]) => (<><h2>{h}</h2><p>{p}</p></>))}
+    </div>
+  </article>
+</Base>

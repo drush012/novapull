@@ -1,0 +1,22 @@
+---
+import { SITE } from '../consts';
+// One in-article ad unit. Renders nothing until AdSense is approved and both
+// the publisher id (consts.ts) and this unit's slot id are filled in, so the
+// site never ships an empty grey ad box during review.
+interface Props { slot?: string; }
+const { slot } = Astro.props;
+const enabled = Boolean(SITE.adsenseClient && slot);
+---
+{enabled && (
+  <div class="ad-slot">
+    <ins
+      class="adsbygoogle"
+      style="display:block"
+      data-ad-client={SITE.adsenseClient}
+      data-ad-slot={slot}
+      data-ad-format="auto"
+      data-full-width-responsive="true"
+    ></ins>
+    <script is:inline>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+  </div>
+)}

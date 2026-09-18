@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://blog.qike.ccwu.cc/sitemap-index.xml

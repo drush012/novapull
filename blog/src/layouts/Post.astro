@@ -1,0 +1,33 @@
+---
+import Base from './Base.astro';
+import AdSlot from '../components/AdSlot.astro';
+import { UI, type Lang, type Category } from '../consts';
+interface Props {
+  title: string; description: string; lang: Lang; category: Category;
+  pubDate: Date; updatedDate?: Date; cover?: string;
+}
+const { title, description, lang, category, pubDate, updatedDate, cover } = Astro.props;
+const t = UI[lang];
+const locale = lang === 'zh' ? 'zh-CN' : 'en-US';
+const fmt = (d: Date) => d.toLocaleDateString(locale, { year: 'numeric', month: 'long', day: 'numeric' });
+---
+<Base title={`${title} · ${t.siteName}`} description={description} lang={lang} image={cover}>
+  <article class="post">
+    <a class="crumb" href={`/${lang}/category/${category}/`}>{t.categories[category]}</a>
+    <h1>{title}</h1>
+    <p class="post-meta">
+      {t.postedOn} {fmt(pubDate)}
+      {updatedDate && <span> · {t.updatedOn} {fmt(updatedDate)}</span>}
+    </p>
+    {cover && <img class="post-cover" src={cover} alt="" loading="lazy" />}
+
+    {/* An in-article slot after the intro; empty until AdSense is live. */}
+    <AdSlot slot="" />
+
+    <div class="prose">
+      <slot />
+    </div>
+
+    <p class="back"><a href={`/${lang}/`}>{t.backHome}</a></p>
+  </article>
+</Base>

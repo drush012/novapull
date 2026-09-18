@@ -1,0 +1,37 @@
+---
+import Base from '../../layouts/Base.astro';
+import { LANGS, UI, type Lang } from '../../consts';
+
+export async function getStaticPaths() {
+  return LANGS.map(lang => ({ params: { lang } }));
+}
+const lang = Astro.params.lang as Lang;
+const t = UI[lang];
+
+const body = {
+  zh: {
+    title: '关于本站',
+    p: [
+      'Qike 笔记是一个分享内容创作、平台运营与 AI 工具实用经验的独立博客。这里的文章都是原创，写给需要动手解决具体问题的人。',
+      '我们不提供任何下载工具或功能，只写「怎么做」的教程、评测和思路。如果你在找一款干净的视频下载软件，可以了解一下我们做的桌面工具 NovaPull。',
+      '有建议或想交流，欢迎通过页面底部的方式联系。'
+    ]
+  },
+  en: {
+    title: 'About',
+    p: [
+      'Qike Notes is an independent blog sharing hands-on experience with content creation, platform growth and AI tools. Every article is original and written for people solving a concrete problem.',
+      'We do not host any download tool or feature here — only how-to guides, reviews and ideas. If you are looking for a clean video downloader, take a look at NovaPull, the desktop tool we build.',
+      'Suggestions and conversation are welcome via the links in the footer.'
+    ]
+  }
+}[lang];
+---
+<Base title={`${body.title} · ${t.siteName}`} description={body.title} lang={lang}>
+  <article class="post">
+    <h1>{body.title}</h1>
+    <div class="prose">
+      {body.p.map(para => <p>{para}</p>)}
+    </div>
+  </article>
+</Base>

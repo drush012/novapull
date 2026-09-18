@@ -1,0 +1,21 @@
+---
+import { UI, CATEGORIES, type Lang } from '../consts';
+interface Props { lang: Lang; }
+const { lang } = Astro.props;
+const t = UI[lang];
+// Swap only the leading /zh or /en of the current path so the toggle keeps the
+// reader on the same page in the other language where one exists.
+const otherPath = Astro.url.pathname.replace(/^\/(zh|en)/, `/${t.otherLangCode}`);
+---
+<header class="site-header">
+  <div class="wrap header-inner">
+    <a class="brand" href={`/${lang}/`}>{t.siteName}</a>
+    <nav class="nav">
+      {CATEGORIES.map(c => (
+        <a href={`/${lang}/category/${c}/`}>{t.categories[c]}</a>
+      ))}
+      <a href={`/${lang}/about/`}>{t.nav.about}</a>
+      <a class="lang-toggle" href={otherPath}>{t.otherLang}</a>
+    </nav>
+  </div>
+</header>

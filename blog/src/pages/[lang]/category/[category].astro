@@ -1,0 +1,36 @@
+---
+import { getCollection } from 'astro:content';
+import Base from '../../../layouts/Base.astro';
+import PostCard from '../../../components/PostCard.astro';
+import { LANGS, CATEGORIES, UI, type Lang, type Category } from '../../../consts';
+
+export async function getStaticPaths() {
+  return LANGS.flatMap(lang => CATEGORIES.map(category => ({ params: { lang, category } })));
+}
+
+const lang = Astro.params.lang as Lang;
+const category = Astro.params.category as Category;
+const t = UI[lang];
+const posts = (await getCollection('posts', p =>
+  p.data.lang === lang && p.data.category === category && !p.data.draft))
+  .sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
+const name = t.categories[category];
+---
+<Base title={`${name} · ${t.siteName}`} description={`${name} — ${t.tagline}`} lang={lang}>
+  <section class="hero">
+    <h1>{name}</h1>
+  </section>
+  <div class="post-grid">
+    {posts.map(p => (
+      <PostCard
+        lang={lang}
+        slug={p.slug.replace(/^(zh|en)\//, '')}
+        title={p.data.title}
+        description={p.data.description}
+        category={p.data.category}
+        pubDate={p.data.pubDate}
+        cover={p.data.cover}
+      />
+    ))}
+  </div>
+</Base>

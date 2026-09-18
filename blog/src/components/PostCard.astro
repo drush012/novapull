@@ -1,0 +1,23 @@
+---
+import { UI, type Lang, type Category } from '../consts';
+interface Props {
+  lang: Lang; slug: string; title: string; description: string;
+  category: Category; pubDate: Date; cover?: string;
+}
+const { lang, slug, title, description, category, pubDate, cover } = Astro.props;
+const t = UI[lang];
+const locale = lang === 'zh' ? 'zh-CN' : 'en-US';
+const href = `/${lang}/${slug}/`;
+---
+<article class="card">
+  {cover && <a href={href} class="card-cover"><img src={cover} alt="" loading="lazy" /></a>}
+  <div class="card-body">
+    <a class="card-cat" href={`/${lang}/category/${category}/`}>{t.categories[category]}</a>
+    <h2><a href={href}>{title}</a></h2>
+    <p class="card-desc">{description}</p>
+    <div class="card-foot">
+      <time>{pubDate.toLocaleDateString(locale, { year: 'numeric', month: 'short', day: 'numeric' })}</time>
+      <a href={href}>{t.readMore}</a>
+    </div>
+  </div>
+</article>

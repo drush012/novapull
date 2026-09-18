@@ -1,0 +1,29 @@
+---
+import { getCollection } from 'astro:content';
+import Post from '../../layouts/Post.astro';
+
+// Each post file lives under content/posts/{lang}/{slug}.md; the URL drops that
+// language folder so it reads /zh/{slug}/ and /en/{slug}/.
+export async function getStaticPaths() {
+  const posts = await getCollection('posts', p => !p.data.draft);
+  return posts.map(p => ({
+    params: { lang: p.data.lang, slug: p.slug.replace(/^(zh|en)\//, '') },
+    props: { post: p }
+  }));
+}
+
+const { post } = Astro.props;
+const { Content } = await post.render();
+const d = post.data;
+---
+<Post
+  title={d.title}
+  description={d.description}
+  lang={d.lang}
+  category={d.category}
+  pubDate={d.pubDate}
+  updatedDate={d.updatedDate}
+  cover={d.cover}
+>
+  <Content />
+</Post>
