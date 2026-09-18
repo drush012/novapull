@@ -443,7 +443,9 @@ function paintUpdate() {
   const facts = $('#updateFacts');
   const notes = $('#updateNotes');
   const offering = Boolean(updateInfo && updateInfo.newer && !updateInfo.error);
-  $('#updateOpen').classList.toggle('hidden', !(offering && updateInfo.page));
+  // The button now goes to our own download page, not the feed's own link, so
+  // it no longer depends on the feed carrying a usable page URL.
+  $('#updateOpen').classList.toggle('hidden', !offering);
   $('#updateSkip').classList.toggle('hidden', !offering);
   if (!updateInfo) {
     state.textContent = t('update.checking');
@@ -516,10 +518,15 @@ function skippedVersion() {
   try { return localStorage.getItem(UPDATE_SKIPPED_KEY) || ''; } catch { return ''; }
 }
 
+// The check still reads the GitHub release feed, but the download button sends
+// people to our own site — its links come off the R2 mirror, which is the fast
+// path in China, whereas the GitHub asset itself is slow or blocked there.
+const DOWNLOAD_PAGE = 'https://www.qike.ccwu.cc/#download';
+
 $('#btnUpdate').onclick = () => openUpdate();
 $('#updateRecheck').onclick = runUpdateCheck;
 $('#updateOpen').onclick = () => {
-  if (updateInfo?.page) window.nova.openExternal(updateInfo.page).catch(error => window.alert(error.message));
+  window.nova.openExternal(DOWNLOAD_PAGE).catch(error => window.alert(error.message));
 };
 $('#updateSkip').onclick = () => {
   if (updateInfo?.version) {

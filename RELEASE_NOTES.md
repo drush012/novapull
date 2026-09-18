@@ -1,28 +1,22 @@
 # NovaPull 1.2.1
 
-## Sign in with email and a one-time code
+## 邮箱验证码登录
 
-Signing in no longer uses a password. Enter a mainstream email address (QQ, 163,
-Gmail, Outlook and the like), receive a six-digit code, and you are in. The code
-expires in ten minutes and is discarded whether it works or not. This replaces
-the username-and-password sign-in from 1.2.0.
+登录不再需要密码。填一个主流邮箱（QQ、163、Gmail、Outlook 等），收到 6 位
+验证码即可登录。验证码 10 分钟失效、用完即弃。取代了 1.2.0 的用户名+密码登录。
 
-## Faster, quieter parsing
+## 解析更快、更安静
 
-- Sites read through the page's own player — Douyin among them — resolve their
-  quality list noticeably faster than before.
-- The hidden window that reads that list is now muted, so parsing no longer
-  leaks any sound.
+- 走站点自带播放器解析的网站（抖音等），读取画质列表比以前明显更快。
+- 后台读画质用的隐藏窗口现在静音，解析时不再漏出声音。
 
-## Easier on the eyes
+## 界面更清爽
 
-- The result card now shows the video's cover for page-player sites, instead of
-  a broken-image box.
-- The whole interface is scaled up a little so the text is easier to read.
+- 结果卡片现在会显示视频封面（页面解析的站点），不再是灰色破图。
+- 整个界面略微放大，文字更好认。
 
-## Privacy
+## 隐私（与 1.2.0 一致）
 
-Unchanged from 1.2.0: parsing and downloading stay on your computer, the account
-server only ever learns your email, the activation code and a random first-run
-id — no hardware fingerprint and nothing about what you download. An activated
-app keeps working for up to 14 days without reaching the server.
+解析和下载都在你本机完成；账号服务器只会知道你的邮箱、激活码和一个首次运行
+生成的随机 id——不含任何硬件指纹，也不含你下载了什么。已激活的软件最多可离线
+14 天照常使用。
