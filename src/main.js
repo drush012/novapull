@@ -670,8 +670,12 @@ const inspectWithYtDlp = (url, request, { anonymous = false } = {}) => new Promi
       const info = await verifyDouyinFormats(JSON.parse(stdout), bundledTool('ffprobe'));
       const douyin = isDouyin(info);
       const all = info.formats || [];
-      // A separate audio stream must exist before a video-only format can be merged.
-      const hasAudioStream = all.some(f => f.acodec && f.acodec !== 'none');
+      // A separate audio stream must exist before a video-only format can be
+      // merged. yt-dlp marks "no audio" as the literal 'none'; an audio track
+      // can carry an unlabelled (undefined) acodec — X's hls-audio group and
+      // its combined http MP4s both do — so a video-less format (vcodec 'none')
+      // counts as audio too, not only one with a spelt-out audio codec.
+      const hasAudioStream = all.some(f => f.vcodec === 'none' || (f.acodec && f.acodec !== 'none'));
       // For Douyin, prefer measured dimensions. Bitrate only breaks ties
       // within a resolution; it cannot establish a stream's pixel dimensions.
       const duration = info.duration || 0;
@@ -696,7 +700,9 @@ const inspectWithYtDlp = (url, request, { anonymous = false } = {}) => new Promi
             ext: f.ext,
             size,
             rate,
-            hasAudio: Boolean(f.acodec && f.acodec !== 'none')
+            // Only an explicit 'none' means video-only; an unlabelled (undefined)
+            // acodec is a combined stream that carries audio, like X's http MP4s.
+            hasAudio: f.acodec !== 'none'
           });
         }
       }
