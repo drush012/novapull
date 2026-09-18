@@ -85,11 +85,15 @@ const EXTRACT = `(() => {
     const og = document.querySelector('meta[property="og:image"]');
     const videoEl = document.querySelector('video[poster]');
     const cfg = (player && (player.config || player.videoConfig)) || {};
-    poster = (og && og.content)
-      || (videoEl && videoEl.getAttribute('poster'))
-      || cfg.cover || cfg.poster || cfg.coverUrl || cfg.dynamicCover || '';
+    const candidates = [
+      og && og.content, videoEl && videoEl.getAttribute('poster'),
+      cfg.cover, cfg.poster, cfg.coverUrl, cfg.dynamicCover
+    ];
+    // A config field can be an object rather than a URL string; take the first
+    // candidate that is actually a usable http(s) address.
+    poster = candidates.find(c => typeof c === 'string' && /^https?:\\/\\//.test(c)) || '';
   } catch (error) { /* leave poster empty */ }
-  return { video, audio, duration, title: document.title || '', poster: String(poster || '') };
+  return { video, audio, duration, title: document.title || '', poster };
 })()`;
 
 function dedupe(items, keyOf) {
