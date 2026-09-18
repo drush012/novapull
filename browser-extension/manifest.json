@@ -1,0 +1,60 @@
+{
+  "manifest_version": 3,
+  "name": "NovaPull 一键下载",
+  "version": "1.0.0",
+  "description": "在支持的视频网站上一键把链接发给 NovaPull 桌面版解析下载",
+  "permissions": ["tabs", "cookies"],
+  "host_permissions": [
+    "http://127.0.0.1:37652/*",
+    "*://*.douyin.com/*", "*://*.iesdouyin.com/*",
+    "*://*.bilibili.com/*", "*://*.b23.tv/*",
+    "*://*.youtube.com/*", "*://*.youtu.be/*", "*://*.youtube-nocookie.com/*", "*://*.google.com/*",
+    "*://*.x.com/*", "*://*.twitter.com/*",
+    "*://*.instagram.com/*",
+    "*://*.xiaohongshu.com/*", "*://*.xhslink.com/*",
+    "*://*.tiktok.com/*",
+    "*://*.facebook.com/*",
+    "*://*.kuaishou.com/*",
+    "*://*.weibo.com/*", "*://*.weibo.cn/*",
+    "*://*.vimeo.com/*",
+    "*://*.twitch.tv/*"
+  ],
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "action": {
+    "default_title": "用 NovaPull 下载",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "*://*.douyin.com/*", "*://*.iesdouyin.com/*",
+        "*://*.bilibili.com/*", "*://*.b23.tv/*",
+        "*://*.youtube.com/*", "*://*.youtu.be/*", "*://*.youtube-nocookie.com/*",
+        "*://*.x.com/*", "*://*.twitter.com/*",
+        "*://*.instagram.com/*",
+        "*://*.xiaohongshu.com/*", "*://*.xhslink.com/*",
+        "*://*.tiktok.com/*",
+        "*://*.facebook.com/*",
+        "*://*.kuaishou.com/*",
+        "*://*.weibo.com/*", "*://*.weibo.cn/*",
+        "*://*.vimeo.com/*",
+        "*://*.twitch.tv/*"
+      ],
+      "js": ["shared.js", "content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}

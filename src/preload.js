@@ -26,5 +26,6 @@ contextBridge.exposeInMainWorld('nova', {
   openPath: path => ipcRenderer.invoke('open-path', path),
   onParseStage: callback => ipcRenderer.on('parse-stage', (_event, data) => callback(data)),
   onTaskEvent: callback => ipcRenderer.on('task-event', (_event, data) => callback(data)),
-  onTaskLog: callback => ipcRenderer.on('task-log', (_event, data) => callback(data))
+  onTaskLog: callback => ipcRenderer.on('task-log', (_event, data) => callback(data)),
+  onDeepLink: callback => ipcRenderer.on('deep-link', (_event, url) => callback(url))
 });

@@ -13,6 +13,106 @@ const { normalizeFeed, parseRelease, isNewer, resolveFeed } = require('./update'
 const account = require('./account');
 const usage = require('./usage');
 
+// One running copy at a time: a second launch — which is exactly what happens
+// when the OS opens a novapull:// link while the app is already open — hands
+// its argv to the first instance instead of starting a duplicate window.
+const DEEP_LINK_SCHEME = 'novapull';
+const gotSingleInstanceLock = app.requestSingleInstanceLock();
+if (!gotSingleInstanceLock) app.quit();
+
+let mainWindow = null;
+// A deep link can arrive before the window has finished loading (cold start
+// via the protocol), so it waits here instead of being dropped on the floor.
+let pendingDeepLink = null;
+
+// novapull://download?url=<encoded page url> — anything else is ignored
+// rather than guessed at, since this only ever comes from our own extension.
+function extractDeepLinkUrl(raw) {
+  if (typeof raw !== 'string' || !raw.startsWith(`${DEEP_LINK_SCHEME}://`)) return null;
+  try { return new URL(raw).searchParams.get('url') || null; }
+  catch { return null; }
+}
+
+function deliverDeepLink(url) {
+  // did-finish-load below is the actual readiness signal; isLoading() can
+  // still briefly read true inside that same handler, so it is only checked
+  // here, for a link that arrives with no load in flight to wait for at all.
+  if (!mainWindow || mainWindow.isDestroyed() || mainWindow.webContents.isLoading()) {
+    pendingDeepLink = url;
+    return;
+  }
+  if (mainWindow.isMinimized()) mainWindow.restore();
+  mainWindow.focus();
+  mainWindow.webContents.send('deep-link', url);
+}
+
+function handleArgv(argv) {
+  const found = argv.map(extractDeepLinkUrl).find(Boolean);
+  if (found) deliverDeepLink(found);
+}
+
+app.on('second-instance', (_event, argv) => handleArgv(argv));
+// macOS hands a registered scheme to the running app this way instead.
+app.on('open-url', (event, url) => {
+  event.preventDefault();
+  const found = extractDeepLinkUrl(url);
+  if (found) deliverDeepLink(found);
+});
+
+// electron-builder's NSIS installer writes the registry keys for a packaged
+// build; running from source needs to point them at this checkout instead.
+if (process.defaultApp && process.argv.length >= 2) {
+  app.setAsDefaultProtocolClient(DEEP_LINK_SCHEME, process.execPath, [path.resolve(process.argv[1])]);
+} else if (!process.defaultApp) {
+  app.setAsDefaultProtocolClient(DEEP_LINK_SCHEME);
+}
+
+// The protocol above depends on the browser's own external-protocol prompt,
+// which turned out not to fire reliably. A loopback HTTP port the extension
+// can just POST to needs no such permission from the browser at all — this
+// is the primary path while the app is running; the protocol is only what
+// gets the app started in the first place when it is not.
+const LOCAL_BRIDGE_PORT = 37652;
+
+function startLocalBridge() {
+  const server = require('http').createServer((request, response) => {
+    response.setHeader('Access-Control-Allow-Origin', '*');
+    response.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    response.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    if (request.method === 'OPTIONS') { response.writeHead(204); response.end(); return; }
+    if (request.method !== 'POST' || request.url !== '/capture') { response.writeHead(404); response.end(); return; }
+    let body = '';
+    request.on('data', chunk => { body += chunk; });
+    request.on('end', () => {
+      try {
+        const data = JSON.parse(body);
+        if (typeof data.url !== 'string' || !data.url) throw new Error('missing url');
+        // The extension reads these off the browser tab the click came from —
+        // same "hand it to yt-dlp, never upload it" file the built-in login
+        // browser already writes, just a second way of filling it in.
+        if (Array.isArray(data.cookies) && data.cookies.length) {
+          const lines = data.cookies.map(netscapeLine).filter(Boolean);
+          if (lines.length) {
+            fs.writeFileSync(loginCookiesPath(),
+              `# Netscape HTTP Cookie File\n# Synced from the browser extension\n\n${lines.join('\n')}\n`,
+              { mode: 0o600 });
+          }
+        }
+        deliverDeepLink(data.url);
+        response.writeHead(200, { 'Content-Type': 'application/json' });
+        response.end(JSON.stringify({ ok: true }));
+      } catch {
+        response.writeHead(400, { 'Content-Type': 'application/json' });
+        response.end(JSON.stringify({ ok: false }));
+      }
+    });
+  });
+  // Losing this race to another instance (or anything else already on the
+  // port) is fine — that instance's own bridge already covers the same job.
+  server.on('error', () => {});
+  server.listen(LOCAL_BRIDGE_PORT, '127.0.0.1');
+}
+
 // Sites where yt-dlp's own extractor is known to return a worse table than the
 // page's player does. For Douyin that gap is 720p+watermark versus 4K clean.
 const PAGE_PROBE_HOSTS = /(^|\.)(douyin\.com|iesdouyin\.com)$/i;
@@ -277,6 +377,7 @@ async function ensureSiteCookies(href) {
       show: false,
       webPreferences: { partition: LOGIN_PARTITION, contextIsolation: true, nodeIntegration: false, sandbox: true, images: false }
     });
+    win.webContents.setAudioMuted(true);
     blockAppDeepLinks(win.webContents);
     let settled = false;
     const finish = () => {
@@ -306,8 +407,9 @@ function loginCookiesStatus() {
 }
 
 // Many sites (Douyin, and YouTube for most video streams) refuse anonymous
-// requests. Cookies come from the app's own browser session and nowhere else —
-// it never reads the user's installed browsers.
+// requests. This file comes from either the app's own built-in login browser
+// or the extension syncing the real browser's cookies for a page it was
+// asked to send — the app itself still never reads an installed browser.
 function cookieArgs(options) {
   if (options?.cookieMode !== 'embedded') return [];
   const file = loginCookiesPath();
@@ -346,9 +448,11 @@ function validateOutputDir(value) {
 
 // The window buttons are drawn by Windows, not by the page, so the theme has to
 // be pushed out to them separately or they stay light on a dark window.
+// 43 ≈ the 38px CSS title-bar row scaled by the body zoom in styles.css, so
+// the native window buttons line up with the app's own title row.
 const TITLE_BAR = {
-  light: { color: '#f6f7f9', symbolColor: '#1f2328', height: 38 },
-  dark: { color: '#1b1f24', symbolColor: '#e6e9ee', height: 38 }
+  light: { color: '#f6f7f9', symbolColor: '#1f2328', height: 43 },
+  dark: { color: '#1b1f24', symbolColor: '#e6e9ee', height: 43 }
 };
 
 function createWindow() {
@@ -362,8 +466,18 @@ function createWindow() {
     backgroundColor: '#ffffff',
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false }
   });
+  mainWindow = win;
   win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   win.webContents.on('will-navigate', event => event.preventDefault());
+  win.webContents.on('did-finish-load', () => {
+    if (!pendingDeepLink) return;
+    const url = pendingDeepLink;
+    pendingDeepLink = null;
+    if (win.isMinimized()) win.restore();
+    win.focus();
+    win.webContents.send('deep-link', url);
+  });
+  win.on('closed', () => { if (mainWindow === win) mainWindow = null; });
   win.loadFile(path.join(__dirname, 'index.html'));
 }
 
@@ -477,7 +591,7 @@ ipcMain.handle('inspect-url', async (_event, payload) => {
     if (probe && probe.video.length) {
       return {
         title: probe.title || t('media.untitled'),
-        thumbnail: '',
+        thumbnail: probe.poster || '',
         duration: probe.duration || 0,
         uploader: '',
         hasAudioStream: probe.audio.length > 0,
@@ -795,9 +909,29 @@ ipcMain.handle('app-info', () => {
   };
 });
 
+// Preview thumbnails are direct CDN links yt-dlp scraped off the page; sites
+// that check a Referer on their images (Douyin's included) refuse a plain
+// <img> load from a file:// page and the renderer shows a broken-image icon.
+// Sending the image's own origin as its Referer is the same trick
+// streamHeaders already uses for the actual video/audio streams.
+function attachThumbnailReferer(ses) {
+  ses.webRequest.onBeforeSendHeaders((details, callback) => {
+    if (details.resourceType === 'image') {
+      try {
+        callback({ requestHeaders: { ...details.requestHeaders, Referer: `${new URL(details.url).origin}/` } });
+        return;
+      } catch { /* not a URL worth touching, fall through unmodified */ }
+    }
+    callback({ requestHeaders: details.requestHeaders });
+  });
+}
+
 app.on('web-contents-created', (_event, contents) => blockAppDeepLinks(contents));
 app.whenReady().then(() => {
+  attachThumbnailReferer(session.defaultSession);
   createWindow();
+  handleArgv(process.argv);
+  startLocalBridge();
   app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); });
 });
 app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(); });

@@ -980,6 +980,9 @@ window.nova?.onTaskEvent(update => {
   if (task.status !== before) renderTasks(); else patchRow(task);
 });
 window.nova?.onTaskLog(({ id, line }) => { const task = tasks.get(id); if (task && /^ERROR:/i.test(line)) task.error = line; });
+// The browser extension hands off a page URL this way; reuse the exact same
+// "open modal, prefill, auto-parse" path a manual paste already takes.
+window.nova?.onDeepLink(url => openModal(url));
 
 // Kept so the status bar and the about box can be redrawn in a new language
 // without asking the main process again.

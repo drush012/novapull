@@ -35,6 +35,12 @@
         ]
       }
     ],
+    "protocols": {
+      "name": "NovaPull deep link",
+      "schemes": [
+        "novapull"
+      ]
+    },
     "win": {
       "target": [
         "nsis",

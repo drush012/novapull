@@ -52,6 +52,8 @@ For content that needs an account — member-only quality, age restrictions, or 
 3. On close, the main process reads that partition through `session.cookies.get()` and writes `login-cookies.txt` in Netscape format into the userData folder, which is then handed to yt-dlp as `--cookies`
 4. "Download → Clear site cookies" wipes the partition and deletes that file
 
+The optional browser extension (`browser-extension/`) offers a second way to fill in the same file: its "download this video" button reads the current tab's cookies for that site and sends them, alongside the page URL, to a `127.0.0.1`-only port the app listens on while running. That request overwrites `login-cookies.txt` the same way step 3 above does — it is a second *source* for the same file, not a second file, and nothing here changes where the file goes afterward or who reads it.
+
 > `login-cookies.txt` is equivalent to your credentials. **Do not ship it alongside the app.** It never leaves the machine on its own.
 
 ## Tested sites
