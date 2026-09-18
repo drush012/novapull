@@ -164,6 +164,34 @@ jobs:
           command: |
             r2 object put novapull-releases/NovaPull-setup.exe --file r2-upload/NovaPull-setup.exe --content-type application/octet-stream
             r2 object put novapull-releases/NovaPull-portable.exe --file r2-upload/NovaPull-portable.exe --content-type application/octet-stream
+
+      # The R2 object names are fixed, so re-uploading a new build leaves the
+      # Cloudflare edge serving the previous one until its 4h TTL expires. This
+      # purges just the two download URLs so the site points at the new build
+      # at once. It is best-effort: with no zone id it skips, and a purge that
+      # fails only warns — the release and the upload above already succeeded.
+      - name: Purge the CDN cache for the download URLs
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: pwsh
+        env:
+          CF_ZONE_ID: ${{ secrets.CLOUDFLARE_ZONE_ID }}
+          CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          if (-not $env:CF_ZONE_ID) { Write-Warning '未配置 CLOUDFLARE_ZONE_ID，跳过清缓存（下载链接会在 CDN TTL 到期后自动更新）'; exit 0 }
+          $body = @{ files = @(
+            'https://dl.qike.ccwu.cc/NovaPull-setup.exe',
+            'https://dl.qike.ccwu.cc/NovaPull-portable.exe'
+          ) } | ConvertTo-Json
+          try {
+            $r = Invoke-RestMethod -Method Post `
+              -Uri "https://api.cloudflare.com/client/v4/zones/$env:CF_ZONE_ID/purge_cache" `
+              -Headers @{ Authorization = "Bearer $env:CF_TOKEN"; 'Content-Type' = 'application/json' } `
+              -Body $body
+            if ($r.success) { Write-Host '已清除下载链接的 CDN 缓存' }
+            else { Write-Warning "清缓存返回失败：$($r.errors | ConvertTo-Json -Compress)" }
+          } catch {
+            Write-Warning "清缓存请求出错（不影响本次发布）：$_"
+          }
       - uses: actions/upload-artifact@v4
         if: ${{ !startsWith(github.ref, 'refs/tags/') }}
         with:
